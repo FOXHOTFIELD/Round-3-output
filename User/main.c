@@ -74,6 +74,7 @@ int main(void)
 
 	///* 若调度器返回，进入死循环 */
     PWM_Init();
+    //GPIO_SetBits(GPIOB, GPIO_Pin_1);
 	while (1)
 	{
         Motor1_SetPWM(50);

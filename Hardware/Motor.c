@@ -82,7 +82,15 @@ void PWM_Init(void)
     GPIO_SetBits(GPIOA, GPIO_Pin_11);
     GPIO_SetBits(GPIOA, GPIO_Pin_12);                 //初始化均为高电平 制动模式
 
-
+    /*STBY控制*/
+        /*STBY -> B0*/
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    GPIO_IS.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_IS.GPIO_Pin = GPIO_Pin_0;
+    GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOB, &GPIO_IS);
+    //GPIO_SetBits(GPIOB, GPIO_Pin_0);
+    STBY_cmd(ENABLE);
 //        /*编码器输入*/
         ///*EncoderA -> PA6 TIM3_CH1 EncoderB -> PA7 TIM3_CH2*/
         ///*同时TIM3每10ms产生中断更新转速*/
@@ -114,6 +122,15 @@ void PWM_Init(void)
 
     //TIM_Cmd(TIM3, ENABLE);
 
+}
+
+void STBY_cmd(FunctionalState state)
+{
+    if(state == ENABLE){
+        GPIO_SetBits(GPIOB, GPIO_Pin_0);
+    }else if(state == DISABLE){
+        GPIO_ResetBits(GPIOB, GPIO_Pin_0);
+    }
 }
 
 void TIM1_Init(void)                //定时中断 10ms
