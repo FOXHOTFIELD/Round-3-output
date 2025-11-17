@@ -52,24 +52,30 @@ static void vTaskPrint(void *pvParameters)
 	}
 }
 
+float Kp = 1, Ki = 0, Kd = 0;					//比例项，积分项，微分项的权重
+enum Motor_Mode Motor1_Mode;
+enum Motor_Mode Motor2_Mode;
+
 int main(void)
 {
-	/* 系统初始化（startup/系统初始化通常已在启动代码中完成） */
-	SystemInit();
+//	/* 系统初始化（startup/系统初始化通常已在启动代码中完成） */
+	//SystemInit();
 
-	/* 初始化串口与 LED */
-	Serial_Init();
-	LED_Init();
+	///* 初始化串口与 LED */
+	//Serial_Init();
+	//LED_Init();
 
-	/* 创建任务：优先级 Blink>Print */
-	xTaskCreate(vTaskBlink, "Blink", 128, NULL, tskIDLE_PRIORITY + 2, NULL);
-	xTaskCreate(vTaskPrint, "Print", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+	///* 创建任务：优先级 Blink>Print */
+	//xTaskCreate(vTaskBlink, "Blink", 128, NULL, tskIDLE_PRIORITY + 2, NULL);
+	//xTaskCreate(vTaskPrint, "Print", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-	/* 启动调度 */
-	vTaskStartScheduler();
+	///* 启动调度 */
+	//vTaskStartScheduler();
 
-	/* 若调度器返回，进入死循环 */
+	///* 若调度器返回，进入死循环 */
+    PWM_Init();
 	while (1)
 	{
+        Motor1_SetPWM(50);
 	}
 }
