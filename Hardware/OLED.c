@@ -576,6 +576,32 @@ void OLED_ShowChar(int16_t X, int16_t Y, char Char, uint8_t FontSize)
 		OLED_ShowImage(X, Y, 6, 8, OLED_F6x8[Char - ' ']);
 	}
 }
+/*
+ * 函    数：简化显示字符
+*/
+void OLED_ShowString_simplified(int16_t row, char *String)
+{
+    int y = 1;
+    switch (row)
+    {
+    case 1:
+        y = 1;
+        break;
+    case 2:
+        y = 17;
+        break;
+    case 3:
+        y = 33;
+        break;
+    case 4:
+        y = 49;
+        break;
+    default:
+        break;
+    }
+
+    OLED_ShowString(1, y, String, OLED_8X16);
+}
 
 /**
   * 函    数：OLED显示字符串（支持ASCII码和中文混合写入）
