@@ -89,7 +89,6 @@ void PWM_Init(void)
     GPIO_IS.GPIO_Pin = GPIO_Pin_0;
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_IS);
-    //GPIO_SetBits(GPIOB, GPIO_Pin_0);
     STBY_cmd(ENABLE);
 //        /*编码器输入*/
         ///*EncoderA -> PA6 TIM3_CH1 EncoderB -> PA7 TIM3_CH2*/
