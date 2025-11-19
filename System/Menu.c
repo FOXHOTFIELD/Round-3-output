@@ -71,7 +71,9 @@ static void Menu_KeyTask(void *pvParameters)
     }
 }
 
- //Menu显示任务
+ /*Menu显示任务
+  *唯一一个oledupdate在这
+  */
  static void Menu_ShowTask(void *pvParameters)
  {
     (void)pvParameters;
@@ -109,7 +111,7 @@ void Menu_Init(void)
     }
     //OLED_ShowString_simplified(1, menu[0]);
     //OLED_ShowString_simplified(2, menu[1]);
-    OLED_Update();
+    OLED_ShowString_simplified(1, "->");
 
     // 创建按键事件队列（长度 10），每个元素为 KeyEvent_t
     if (xKeyQueue == NULL) {
@@ -135,22 +137,10 @@ KeyEvent_t Menu_GetKeyEvent(TickType_t xTicksToWait)
     return KEY_EVENT_NONE;
 }
 
-void Menu_MovePoint(KeyEvent_t ev)
-{
-    switch (ev)
-    {
-    case KEY_EVENT_UP:
-        curState.psost = (MenuPost)(((int8_t)curState.psost - 1 + num_of_option ) % num_of_option);
-        break;
-    case KEY_EVENT_DOWN:
-        curState.psost = (MenuPost)(((int8_t)curState.psost + 1 + num_of_option ) % num_of_option);
-        break;
-
-    default:
-        break;
-    }
-}
-
+/*
+ *在Menu_KeyTask内部直接接受ev
+ *转到具体功能实现
+*/
 void Menu_CMDProcess(KeyEvent_t ev)
 {
     switch (curState.mode)
@@ -176,3 +166,25 @@ void Menu_CMDProcess(KeyEvent_t ev)
     }
 
 }
+/*
+ *移动光标
+*/
+void Menu_MovePoint(KeyEvent_t ev)
+{
+    OLED_ClearArea(1, 1, 16, 48);
+    switch (ev)
+    {
+    case KEY_EVENT_UP:
+        curState.psost = (MenuPost)(((int8_t)curState.psost - 1 + num_of_option ) % num_of_option);
+        break;
+    case KEY_EVENT_DOWN:
+        curState.psost = (MenuPost)(((int8_t)curState.psost + 1 + num_of_option ) % num_of_option);
+        break;
+
+    default:
+        break;
+    }
+    OLED_ShowString_simplified((int8_t)curState.psost+1, "->");
+}
+
+

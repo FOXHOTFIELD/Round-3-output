@@ -57,7 +57,7 @@ enum Motor_Mode Motor1_Mode;
 enum Motor_Mode Motor2_Mode;
 MenuState curState = {
     .mode = Wait,
-    .psost = speed
+    .psost = start
 };
 
 int main(void)
