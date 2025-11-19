@@ -48,7 +48,8 @@ static void Menu_KeyTask(void *pvParameters)
             vTaskDelay(pdMS_TO_TICKS(20));
             if (GPIO_ReadInputDataBit(GPIOB, KEY_SURE) == Bit_RESET) {
                 KeyEvent_t ev = KEY_EVENT_SURE;
-                xQueueSend(xKeyQueue, &ev, 0);
+                Menu_CMDProcess(ev);
+                //xQueueSend(xKeyQueue, &ev, 0);
                 while (GPIO_ReadInputDataBit(GPIOB, KEY_SURE) == Bit_RESET) {
                     vTaskDelay(pdMS_TO_TICKS(10));
                 }
@@ -59,7 +60,8 @@ static void Menu_KeyTask(void *pvParameters)
             vTaskDelay(pdMS_TO_TICKS(20));
             if (GPIO_ReadInputDataBit(GPIOB, KEY_BACK) == Bit_RESET) {
                 KeyEvent_t ev = KEY_EVENT_BACK;
-                xQueueSend(xKeyQueue, &ev, 0);
+                Menu_CMDProcess(ev);
+                //xQueueSend(xKeyQueue, &ev, 0);
                 while (GPIO_ReadInputDataBit(GPIOB, KEY_BACK) == Bit_RESET) {
                     vTaskDelay(pdMS_TO_TICKS(10));
                 }
@@ -72,7 +74,7 @@ static void Menu_KeyTask(void *pvParameters)
 }
 
  /*Menu显示任务
-  *唯一一个oledupdate在这
+  *唯一一个oledupdate在这（并非 menuinit里面有一个
   */
  static void Menu_ShowTask(void *pvParameters)
  {
@@ -81,7 +83,6 @@ static void Menu_KeyTask(void *pvParameters)
     for(;;){
         OLED_ShowNum(120, 1, (int)curState.psost, 1, OLED_6X8);
         OLED_ShowNum(120, 9, (int)curState.mode, 1, OLED_6X8);
-
         /* 定期刷新 OLED 缓冲到显示，否则仅在其它地方调用 OLED_Update 时才会刷新
            之前的行为是：只有在按键处理（Menu_CMDProcess）调用了 OLED_Update，
            屏幕才会更新，所以看起来“第一次按键后才开始显示”。
@@ -112,6 +113,7 @@ void Menu_Init(void)
     //OLED_ShowString_simplified(1, menu[0]);
     //OLED_ShowString_simplified(2, menu[1]);
     OLED_ShowString_simplified(1, "->");
+    OLED_ShowSignedNum(100, 17, TargetSpeed, 2, OLED_8X16);
 
     // 创建按键事件队列（长度 10），每个元素为 KeyEvent_t
     if (xKeyQueue == NULL) {
@@ -151,16 +153,22 @@ void Menu_CMDProcess(KeyEvent_t ev)
             Menu_MovePoint(ev);
         }else if (ev == KEY_EVENT_SURE)
         {
-            
+            if(curState.psost == speed) Menu_turnEdit();
         }else if (ev == KEY_EVENT_BACK)
         {
             /* code */
         }
         
         
-        
         break;
-    
+    case Edit:
+        if(ev == KEY_EVENT_SURE){
+            Menu_turnEdit();
+        }else if (ev == KEY_EVENT_UP || ev == KEY_EVENT_DOWN)
+        {
+            Menu_changeSpeed(ev);
+        }
+        
     default:
         break;
     }
@@ -187,4 +195,25 @@ void Menu_MovePoint(KeyEvent_t ev)
     OLED_ShowString_simplified((int8_t)curState.psost+1, "->");
 }
 
+static void Menu_turnEdit(void)
+{
+    if(curState.mode == Edit){
+        curState.mode = Wait;
+        OLED_ClearArea(115, 40, 8, 16);
+    }else if (curState.mode == Wait)
+    {
+        curState.mode = Edit;
+        /* code */
+        OLED_ShowString(115, 40, "E", OLED_8X16);
+    }
 
+}
+
+static void Menu_changeSpeed(KeyEvent_t ev)
+{
+    OLED_ClearArea(100, 17, 8, 16);
+    if(curState.mode == Edit && curState.psost == speed){
+        TargetSpeed += (ev == KEY_EVENT_UP ? 5 : -5);
+    }
+    OLED_ShowSignedNum(100, 17, TargetSpeed, 2, OLED_8X16);
+}
