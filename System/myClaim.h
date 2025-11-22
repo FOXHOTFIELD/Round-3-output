@@ -24,6 +24,6 @@ extern float Kp, Ki, Kd;					//比例项，积分项，微分项的权重
 extern volatile float Error0, Error1, Error2;		//本次误差，上次误差，上上次误差
 
 extern int flag;
-
+extern int TargetSpeed;
 extern enum MENU_STATE menu_state;
 #endif

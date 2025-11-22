@@ -16,22 +16,25 @@ void Serial_Init(void)
 {
 	/*开启时钟*/
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);	//开启USART1的时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);	//开启GPIOA的时钟
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);    //开启GPIOB的时钟（改用PB6/PB7）
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);     //开启AFIO时钟以支持引脚重映射
+	/*重映射USART1到PB6/PB7*/
+	GPIO_PinRemapConfig(GPIO_Remap_USART1, ENABLE);
 	
 	/*GPIO初始化*/
 	GPIO_InitTypeDef GPIO_InitStructure;
+	/* USART1 remapped pins: PB6 -> TX (AF_PP), PB7 -> RX (IPU) */
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; /* PB6 TX */
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);					//将PA9引脚初始化为复用推挽输出
-	
+	GPIO_Init(GPIOB, &GPIO_InitStructure);                    //将PB6引脚初始化为复用推挽输出（USART1 TX）
+
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7; /* PB7 RX */
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);					//将PA10引脚初始化为上拉输入
-	
-	/*USART初始化*/
-	USART_InitTypeDef USART_InitStructure;					//定义结构体变量
+	GPIO_Init(GPIOB, &GPIO_InitStructure);                    //将PB7引脚初始化为上拉输入（USART1 RX）
+
+	USART_InitTypeDef USART_InitStructure;                    //定义结构体变量
 	USART_InitStructure.USART_BaudRate = 9600;				//波特率
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//硬件流控制，不需要
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;	//模式，发送模式和接收模式均选择
@@ -56,6 +59,26 @@ void Serial_Init(void)
 	
 	/*USART使能*/
 	USART_Cmd(USART1, ENABLE);								//使能USART1，串口开始运行
+
+    xTaskCreate(Serial_rxTask, "Serial_rxTask", 256, NULL, tskIDLE_PRIORITY+2, NULL);
+}
+
+/*处理Serial*/
+void Serial_rxTask(void *pvParameters)
+{
+    (void)pvParameters;
+
+    for(;;){
+        if (Serial_RxFlag == 1)		//如果接收到数据包
+		{
+            OLED_ShowString(1,56, Serial_RxPacket, OLED_6X8);
+	        OLED_Update();
+            Serial_SendString(Serial_RxPacket);
+			
+			Serial_RxFlag = 0;			//处理完成后，需要将接收数据包标志位清零，否则将无法接收后续数据包
+		}
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 }
 
 /**

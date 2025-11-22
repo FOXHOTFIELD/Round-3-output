@@ -80,6 +80,7 @@
   * 才会将显存数组的数据发送到OLED硬件，进行显示
   */
 uint8_t OLED_DisplayBuf[8][128];
+uint8_t OLED_DisplayBuf_back_up[8][128];
 
 /*********************全局变量*/
 
@@ -1504,3 +1505,27 @@ void OLED_DrawArc(int16_t X, int16_t Y, uint8_t Radius, int16_t StartAngle, int1
 
 /*****************江协科技|版权所有****************/
 /*****************jiangxiekeji.com*****************/
+
+/**
+  * 函    数：Buf备份函数
+  * 返 回 值：无
+  * 说    明：储存当前OLED_DisplayBuf至BackUp
+  */
+ void OLED_BufBackUp(void)
+ {
+    for(int i = 0; i < 8; i++){
+        memmove(OLED_DisplayBuf_back_up[i], OLED_DisplayBuf[i], 128 * sizeof(char));
+    }
+ }
+
+/**
+  * 函    数：Buf还原函数
+  * 返 回 值：无
+  * 说    明：从backup还原到buf
+  */
+ void OLED_BufRestore(void)
+ {
+    for(int i = 0; i < 8; i++){
+        memmove(OLED_DisplayBuf[i], OLED_DisplayBuf_back_up[i], 128 * sizeof(char));
+    }
+ }
