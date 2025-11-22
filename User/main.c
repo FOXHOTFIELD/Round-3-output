@@ -61,13 +61,14 @@ MenuState curState = {
     .psost = start
 };
 
+int flag = 0;
 int main(void)
 {
 	/* 系统初始化（startup/系统初始化通常已在启动代码中完成） */
 	SystemInit();
     OLED_Init();
     Menu_Init();
-
+    I2C2_Init();
 	///* 初始化串口与 LED */
 	//Serial_Init();
 	//LED_Init();
