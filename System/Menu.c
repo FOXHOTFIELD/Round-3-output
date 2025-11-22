@@ -72,8 +72,7 @@ static void Menu_KeyTask(void *pvParameters)
 }
 
  /*Menu显示任务
-  * 不再周期刷新，而是等待来自 `Menu_CMDProcess` 的通知唤醒刷新。
-  * 在某些操作（例如 Menu_prepareRun）期间可阻止刷新以避免与倒计时冲突。
+  *唯一一个oledupdate在这（并非 menuinit里面有一个
   */
  static void Menu_ShowTask(void *pvParameters)
  {
@@ -153,7 +152,6 @@ void Menu_CMDProcess(KeyEvent_t ev)
         }else if (ev == KEY_EVENT_SURE)
         {
             if(curState.psost == speed) Menu_turnEdit();
-            if(curState.psost == start) Menu_prepareRun(ev);
         }else if (ev == KEY_EVENT_BACK)
         {
             /* code */
@@ -210,27 +208,4 @@ static void Menu_changeSpeed(KeyEvent_t ev)
         TargetSpeed += (ev == KEY_EVENT_UP ? 5 : -5);
     }
     OLED_ShowSignedNum(100, 17, TargetSpeed, 2, OLED_8X16);
-}
-
-static void Menu_prepareRun(KeyEvent_t ev){
-    // 在倒计时期间阻止显示任务的并发刷新，避免与倒计时画面冲突
-    oled_update_blocked = pdTRUE;
-    OLED_BufBackUp();
-    OLED_Clear();
-    for(int i = 3; i > 0; i--){
-        OLED_Clear();
-        OLED_ShowNum(60, 24, i, 1, OLED_8X16);
-        OLED_DrawCircle(63, 32, 9, OLED_UNFILLED);
-        OLED_Reverse();
-        OLED_Update();
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
-    OLED_BufRestore();
-    // 结束倒计时后立刻更新一次物理屏幕
-    OLED_Update();
-    oled_update_blocked = pdFALSE;
-    // 通知显示任务在恢复后做一次同步刷新（如果需要）
-    if (xMenuShowHandle != NULL) {
-        xTaskNotifyGive(xMenuShowHandle);
-    }
 }
