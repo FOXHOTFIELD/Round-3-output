@@ -32,8 +32,6 @@ void OLED_Clear(void);
 void OLED_ClearArea(int16_t X, int16_t Y, uint8_t Width, uint8_t Height);
 void OLED_Reverse(void);
 void OLED_ReverseArea(int16_t X, int16_t Y, uint8_t Width, uint8_t Height);
-void OLED_BufBackUp(void);
-void OLED_BufRestore(void);
 
 /*显示函数*/
 void OLED_ShowChar(int16_t X, int16_t Y, char Char, uint8_t FontSize);

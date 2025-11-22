@@ -47,7 +47,6 @@ void Menu_CMDProcess(KeyEvent_t ev);
 KeyEvent_t Menu_GetKeyEvent(TickType_t xTicksToWait);
 static void Menu_turnEdit(void);
 static void Menu_changeSpeed(KeyEvent_t ev);
-static void Menu_prepareRun(KeyEvent_t ev);
 
 
 
