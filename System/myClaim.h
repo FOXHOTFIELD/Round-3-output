@@ -12,9 +12,6 @@ enum Motor_Mode{
     Motor_Mode_stop
 };
 
-
-extern int8_t TargetSpeed;
-
 extern enum Motor_Mode Motor1_Mode;
 extern enum Motor_Mode Motor2_Mode;
 
@@ -28,4 +25,5 @@ extern volatile float Error0, Error1, Error2;		//本次误差，上次误差，�
 
 extern int flag;
 
+extern enum MENU_STATE menu_state;
 #endif

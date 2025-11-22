@@ -52,7 +52,6 @@
 	//}
 //}
 
-int8_t TargetSpeed = 20;
 float Kp = 1, Ki = 0, Kd = 0;					//比例项，积分项，微分项的权重
 enum Motor_Mode Motor1_Mode;
 enum Motor_Mode Motor2_Mode;
