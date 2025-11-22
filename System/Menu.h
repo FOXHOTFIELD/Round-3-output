@@ -45,6 +45,9 @@ void Menu_CMDProcess(KeyEvent_t ev);
 // 从按键事件队列获取一个事件，参数为等待的最大 tick 数，
 // 若超时返回 KEY_EVENT_NONE
 KeyEvent_t Menu_GetKeyEvent(TickType_t xTicksToWait);
+static void Menu_turnEdit(void);
+static void Menu_changeSpeed(KeyEvent_t ev);
+
 
 
 #endif
