@@ -46,7 +46,7 @@ void PWM_Init(void)
 
 
     //GPIO_InitTypeDef GPIO_IS;
-    GPIO_IS.GPIO_Mode = GPIO_Mode_Out_PP;            //TIM3_CH1
+    GPIO_IS.GPIO_Mode = GPIO_Mode_AF_PP;            //TIM3_CH1 使用复用推挽输出
     GPIO_IS.GPIO_Pin = GPIO_Pin_6;                  //PWMB TIM3
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_IS);
@@ -71,16 +71,25 @@ void PWM_Init(void)
     TIM_Cmd(TIM3, ENABLE);
 
 
-    /*电机模式输出*/
+    /*电机1模式输出*/
         /*AIN1 -> PA11 AIN2 -> PA12*/
     GPIO_IS.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_IS.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12;     //AIN1 AIN2
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_IS);
     Motor1_Mode = Motor_Mode_break;
-    Motor2_Mode = Motor_Mode_break;
     GPIO_SetBits(GPIOA, GPIO_Pin_11);
     GPIO_SetBits(GPIOA, GPIO_Pin_12);                 //初始化均为高电平 制动模式
+
+    /*电机2模式输出*/
+        /*BIN1 -> PA4 BIN2 -> PA5*/
+    GPIO_IS.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_IS.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;     //BIN1 BIN2
+    GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_IS);
+    Motor2_Mode = Motor_Mode_break;
+    GPIO_SetBits(GPIOA, GPIO_Pin_4);
+    GPIO_SetBits(GPIOA, GPIO_Pin_5);                 //初始化均为高电平 制动模式
 
     /*STBY控制*/
         /*STBY -> B0*/
@@ -89,37 +98,9 @@ void PWM_Init(void)
     GPIO_IS.GPIO_Pin = GPIO_Pin_0;
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_IS);
+
     STBY_cmd(ENABLE);
-//        /*编码器输入*/
-        ///*EncoderA -> PA6 TIM3_CH1 EncoderB -> PA7 TIM3_CH2*/
-        ///*同时TIM3每10ms产生中断更新转速*/
-    //RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
-    //GPIO_IS.GPIO_Mode = GPIO_Mode_IPU;
-    //GPIO_IS.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;       //电机1 编码器A B TIM3
-    //GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
-    //GPIO_Init(GPIOA, &GPIO_IS);
-
-    //TIM_TBIS.TIM_ClockDivision = TIM_CKD_DIV1;
-    //TIM_TBIS.TIM_CounterMode = TIM_CounterMode_Up;
-    //TIM_TBIS.TIM_Period = 65536-1;
-    //TIM_TBIS.TIM_Prescaler = 1 - 1;
-    //TIM_TBIS.TIM_RepetitionCounter = 0;
-    //TIM_TimeBaseInit(TIM3, &TIM_TBIS);
-
-    //TIM_ICInitTypeDef TIM_ICIS;
-    //TIM_ICStructInit(&TIM_ICIS);
-
-    //TIM_ICIS.TIM_Channel = TIM_Channel_1;
-    //TIM_ICIS.TIM_ICFilter = 0xF;
-    //TIM_ICInit(TIM3, &TIM_ICIS);
-    //TIM_ICIS.TIM_Channel = TIM_Channel_2;
-    //TIM_ICIS.TIM_ICFilter = 0xF;
-    //TIM_ICInit(TIM3, &TIM_ICIS);
-
-    //TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
-
-    //TIM_Cmd(TIM3, ENABLE);
 
 }
 
@@ -164,37 +145,12 @@ void TIM1_Init(void)                //定时中断 10ms
     // 5. 启动定时器
     TIM_Cmd(TIM1, ENABLE);                                 // 启动TIM1
 }
-///**
-  //* 函    数：获取编码器的增量值
-  //* 参    数：无
-  //* 返 回 值：自上此调用此函数后，编码器的增量值
-  //*/
-//int16_t Motor1_getSpeed(void)
-//{
-	///*使用Temp变量作为中继，目的是返回CNT后将其清零*/
-	//int16_t Temp;
-	//Temp = TIM_GetCounter(TIM3);
-	//TIM_SetCounter(TIM3, 0);
-	//return Temp;
-//}
+
 // 6. 编写中断服务函数
 void TIM1_UP_IRQHandler(void)                             // TIM1更新中断服务函数[4,5](@ref)
 {
     if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET)    // 检查更新中断标志
     {
-
-//        Motor1_Speed = Motor1_getSpeed();   				//每隔固定时间段读取一次编码器计数增量值，即为速度值
-        //Encoder_Count += Encoder_Get();                     //目标电机的位置
-        /*!!!!!!!!!*/
-		//TIM_ClearITPendingBit(TIM3, TIM_IT_Update);			//清除TIM2更新事件的中断标志位
-															//中断标志位必须清除
-															//否则中断将连续不断地触发，导致主程序卡死
-
-//        float arr[3];
-        //arr[0] = (float)Actual;
-        //arr[1] = (float)Target;
-        //arr[2] = (float)Out;
-        //Serial_SendJustFloat(arr, 3);
 
         PIDControl();
         TIM_ClearITPendingBit(TIM1, TIM_IT_Update);       // 清除中断标志位[4,5](@ref)
@@ -203,15 +159,27 @@ void TIM1_UP_IRQHandler(void)                             // TIM1更新中断服
 
 
 /**
-  * 函    数：PWM设置CCR
+  * 函    数：PWM1设置CCR
   * 参    数：Compare 要写入的CCR的值，范围：0~100
   * 返 回 值：无
   * 注意事项：CCR和ARR共同决定占空比，此函数仅设置CCR的值，并不直接是占空比
   *           占空比Duty = CCR / (ARR + 1)
   */
-void Motor1_SetCompare1(uint16_t Compare)
+void Motor1_SetCompare(uint16_t Compare)
 {
 	TIM_SetCompare1(TIM2, Compare);		//设置CCR1的值
+}
+
+/**
+  * 函    数：PWM2设置CCR
+  * 参    数：Compare 要写入的CCR的值，范围：0~100
+  * 返 回 值：无
+  * 注意事项：CCR和ARR共同决定占空比，此函数仅设置CCR的值，并不直接是占空比
+  *           占空比Duty = CCR / (ARR + 1)
+  */
+void Motor2_SetCompare(uint16_t Compare)
+{
+	TIM_SetCompare1(TIM3, Compare);		//设置CCR2的值
 }
 
 void Motor_SetMode(int numMotor, enum Motor_Mode Mode)
@@ -243,22 +211,22 @@ void Motor_SetMode(int numMotor, enum Motor_Mode Mode)
 
     else if(numMotor == 2){
         switch (Mode)
-        {
+                {
         case Motor_Mode_break:
-            GPIO_SetBits(GPIOA, GPIO_Pin_11);
-            GPIO_SetBits(GPIOA, GPIO_Pin_12);
+            GPIO_SetBits(GPIOA, GPIO_Pin_4);
+            GPIO_SetBits(GPIOA, GPIO_Pin_5);
             break;
         case Motor_Mode_stop:
-            GPIO_ResetBits(GPIOA, GPIO_Pin_11);
-            GPIO_ResetBits(GPIOA, GPIO_Pin_12);
+            GPIO_ResetBits(GPIOA, GPIO_Pin_4);
+            GPIO_ResetBits(GPIOA, GPIO_Pin_5);
             break;
         case Motor_Mode_frd_rotation:
-            GPIO_SetBits(GPIOA, GPIO_Pin_11);
-            GPIO_ResetBits(GPIOA, GPIO_Pin_12);
+            GPIO_SetBits(GPIOA, GPIO_Pin_4);
+            GPIO_ResetBits(GPIOA, GPIO_Pin_5);
             break;
         case Motor_Mode_rvs_rotation:
-            GPIO_ResetBits(GPIOA, GPIO_Pin_11);
-            GPIO_SetBits(GPIOA, GPIO_Pin_12);
+            GPIO_ResetBits(GPIOA, GPIO_Pin_4);
+            GPIO_SetBits(GPIOA, GPIO_Pin_5);
             break;
         default:
             break;
@@ -267,7 +235,7 @@ void Motor_SetMode(int numMotor, enum Motor_Mode Mode)
     }
 }
 /**
-  * 函    数：直流电机设置PWM
+  * 函    数：直流电机1设置PWM
   * 参    数：PWM 要设置的PWM值，范围：-100~100（负数为反转）
   * 返 回 值：无
   */
@@ -278,18 +246,39 @@ void Motor1_SetPWM(int8_t PWM)
 		//GPIO_ResetBits(GPIOB, GPIO_Pin_12);	//PB12置低电平
 		//GPIO_SetBits(GPIOB, GPIO_Pin_13);	//PB13置高电平
         Motor_SetMode(1, Motor_Mode_frd_rotation);
-		Motor1_SetCompare1(PWM);				//设置PWM占空比
+		Motor1_SetCompare(PWM);				//设置PWM占空比
 	}
 	else									//否则，即设置反转的速度值
 	{
 		//GPIO_SetBits(GPIOB, GPIO_Pin_12);	//PB12置高电平
 		//GPIO_ResetBits(GPIOB, GPIO_Pin_13);	//PB13置低电平
         Motor_SetMode(1, Motor_Mode_rvs_rotation);
-		Motor1_SetCompare1(-PWM);				//设置PWM占空比
+		Motor1_SetCompare(-PWM);				//设置PWM占空比
 	}
 }
 
-
+/**
+  * 函    数：直流电机2设置PWM
+  * 参    数：PWM 要设置的PWM值，范围：-100~100（负数为反转）
+  * 返 回 值：无
+  */
+void Motor2_SetPWM(int8_t PWM)
+{
+	if (PWM >= 0)							//如果设置正转的PWM
+	{
+		//GPIO_ResetBits(GPIOB, GPIO_Pin_12);	//PB12置低电平
+		//GPIO_SetBits(GPIOB, GPIO_Pin_13);	//PB13置高电平
+        Motor_SetMode(2, Motor_Mode_frd_rotation);
+		Motor2_SetCompare(PWM);				//设置PWM占空比
+	}
+	else									//否则，即设置反转的速度值
+	{
+		//GPIO_SetBits(GPIOB, GPIO_Pin_12);	//PB12置高电平
+		//GPIO_ResetBits(GPIOB, GPIO_Pin_13);	//PB13置低电平
+        Motor_SetMode(2, Motor_Mode_rvs_rotation);
+		Motor2_SetCompare(-PWM);				//设置PWM占空比
+	}
+}
 
 /**
   * 函    数：PWM设置PSC
@@ -303,48 +292,3 @@ void Motor1_SetPrescaler(uint16_t Prescaler)
 	TIM_PrescalerConfig(TIM2, Prescaler, TIM_PSCReloadMode_Immediate);		//设置PSC的值
 }
 
-//void ButtonInit(void)
-//{
-    //RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-    //RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    
-    //GPIO_InitTypeDef GPIO_IS;
-    //GPIO_IS.GPIO_Mode = GPIO_Mode_IPD;
-    //GPIO_IS.GPIO_Pin = GPIO_Pin_0;
-    //GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
-    //GPIO_Init(GPIOA, &GPIO_IS);
-
-    //GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource0);
-
-    //EXTI_InitTypeDef EXTI_IS;
-    //EXTI_IS.EXTI_Line = EXTI_Line0;
-    //EXTI_IS.EXTI_LineCmd = ENABLE;
-    //EXTI_IS.EXTI_Mode = EXTI_Mode_Interrupt;
-    //EXTI_IS.EXTI_Trigger = EXTI_Trigger_Rising;
-    //EXTI_Init(&EXTI_IS);
-
-    //NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-
-    //NVIC_InitTypeDef NVIC_IS;
-    //NVIC_IS.NVIC_IRQChannel = EXTI0_IRQn;
-    //NVIC_IS.NVIC_IRQChannelCmd = ENABLE;
-    //NVIC_IS.NVIC_IRQChannelPreemptionPriority = 0;
-    //NVIC_IS.NVIC_IRQChannelSubPriority = 0;
-    //NVIC_Init(&NVIC_IS);
-
-//}
-
-//void EXTI0_IRQHandler(void)
-//{
-    //if(EXTI_GetITStatus(EXTI_Line0) == SET)
-    //{
-        //Delay_ms(20);
-        //while(GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0) == 0) ;
-        //Delay_ms(20);
-        //g_encoder_init = (test == TEST_1 ? 1 : 0);
-        //g_encoder_deinit = (test == TEST_2 ? 1 : 0);
-        //test = (test == TEST_1 ? TEST_2 : TEST_1);
-        //g_oled_clear_request = 1;
-    //}
-    //EXTI_ClearITPendingBit(EXTI_Line0);
-//}
