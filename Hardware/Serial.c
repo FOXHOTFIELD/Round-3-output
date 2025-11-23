@@ -3,10 +3,14 @@
 #include <stdarg.h>
 #include <string.h>
 
-char Serial_RxPacket[100];				//定义接收数据包数组，数据包格式"@MSG\r\n"
+#define SIZE_OF_RXPACKET 64
+char Serial_RxPacket[SIZE_OF_RXPACKET];				//定义接收数据包数组，数据包格式"@MSG\r\n"
 uint8_t Serial_RxData;		//定义串口接收的数据变量
 uint8_t Serial_RxFlag;		//定义串口接收的标志位变量			//定义接收数据包标志位
 #define JUSTFLOAT_TAIL   {0x00, 0x00, 0x80, 0x7f} // 帧尾[1]
+
+QueueHandle_t xRxQueue = NULL;
+
 /**
   * 函    数：串口初始化
   * 参    数：无
@@ -42,42 +46,47 @@ void Serial_Init(void)
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;	//停止位，选择1位
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;		//字长，选择8位
 	USART_Init(USART1, &USART_InitStructure);				//将结构体变量交给USART_Init，配置USART1
+
+	/* 先创建串口接收队列与任务，避免中断早到导致空指针 */
+	xRxQueue = xQueueCreate(5, sizeof(Serial_RxPacket));
+	if(xRxQueue == NULL) return;
+	BaseType_t xReturn = pdFAIL;
+	xReturn = xTaskCreate(Serial_rxTask, "Serial_rxTask", 512, NULL, tskIDLE_PRIORITY+2, NULL);
+	if(xReturn == pdFAIL) return;
 	
 	/*中断输出配置*/
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);			//开启串口接收数据的中断
 	
-	/*NVIC中断分组*/
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);			//配置NVIC为分组2      //  > :[]
+	/*NVIC中断分组：使用分组4，全部为抢占优先级，便于与FreeRTOS对齐*/
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 	
 	/*NVIC配置*/
 	NVIC_InitTypeDef NVIC_InitStructure;					//定义结构体变量
 	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;		//选择配置NVIC的USART1线
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//指定NVIC线路使能
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;		//指定NVIC线路的抢占优先级为1
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;		//指定NVIC线路的响应优先级为1
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY; // 数值大=优先级低，满足可调用FromISR
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_Init(&NVIC_InitStructure);							//将结构体变量交给NVIC_Init，配置NVIC外设
 	
 	/*USART使能*/
 	USART_Cmd(USART1, ENABLE);								//使能USART1，串口开始运行
-
-    xTaskCreate(Serial_rxTask, "Serial_rxTask", 256, NULL, tskIDLE_PRIORITY+2, NULL);
+    OLED_ShowString(56, 1, "SerialOK", OLED_6X8);
 }
 
 /*处理Serial*/
 void Serial_rxTask(void *pvParameters)
 {
     (void)pvParameters;
-
-    for(;;){
-        if (Serial_RxFlag == 1)		//如果接收到数据包
+    char Rx_buf[SIZE_OF_RXPACKET];
+	for(;;){
+		if (xQueueReceive(xRxQueue, Rx_buf, portMAX_DELAY) == pdPASS)		//如果接收到数据包
 		{
-            OLED_ShowString(1,56, Serial_RxPacket, OLED_6X8);
+			OLED_ShowString(1,56, Rx_buf, OLED_6X8);
 	        OLED_Update();
-            Serial_SendString(Serial_RxPacket);
+			Serial_SendString(Rx_buf);
 			
 			Serial_RxFlag = 0;			//处理完成后，需要将接收数据包标志位清零，否则将无法接收后续数据包
 		}
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -238,7 +247,7 @@ void Serial_SendJustFloat(float *data, uint16_t num)
   *           请确保函数名正确，不能有任何差异，否则中断函数将不能进入
   */
 void USART1_IRQHandler(void)
-{
+{                flag++;
 	static uint8_t RxState = 0;		//定义表示当前状态机状态的静态变量
 	static uint8_t pRxPacket = 0;	//定义表示当前接收数据位置的静态变量
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) == SET)	//判断是否是USART1的接收事件触发的中断
@@ -263,10 +272,13 @@ void USART1_IRQHandler(void)
 			{
 				RxState = 2;			//置下一个状态
 			}
-			else						//接收到了正常的数据
+			else					//接收到了正常的数据
 			{
-				Serial_RxPacket[pRxPacket] = RxData;		//将数据存入数据包数组的指定位置
-				pRxPacket ++;			//数据包的位置自增
+				if (pRxPacket < SIZE_OF_RXPACKET - 1)
+				{
+					Serial_RxPacket[pRxPacket] = RxData;		//将数据存入数据包数组的指定位置
+					pRxPacket ++;			//数据包的位置自增
+				}
 			}
 		}
 		/*当前状态为2，接收数据包第二个包尾*/
@@ -274,9 +286,16 @@ void USART1_IRQHandler(void)
 		{
 			if (RxData == '\n')			//如果收到第二个包尾
 			{
+
 				RxState = 0;			//状态归0
 				Serial_RxPacket[pRxPacket] = '\0';			//将收到的字符数据包添加一个字符串结束标志
 				Serial_RxFlag = 1;		//接收数据包标志位置1，成功接收一个数据包
+
+				if (xRxQueue != NULL) {
+					BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+					xQueueSendFromISR(xRxQueue, Serial_RxPacket, &xHigherPriorityTaskWoken);
+					portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+				}
 			}
 		}
 		
