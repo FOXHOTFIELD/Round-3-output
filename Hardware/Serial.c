@@ -3,10 +3,14 @@
 #include <stdarg.h>
 #include <string.h>
 
-char Serial_RxPacket[100];				//定义接收数据包数组，数据包格式"@MSG\r\n"
+#define SIZE_OF_RXPACKET 64
+char Serial_RxPacket[SIZE_OF_RXPACKET];				//定义接收数据包数组，数据包格式"@MSG\r\n"
 uint8_t Serial_RxData;		//定义串口接收的数据变量
 uint8_t Serial_RxFlag;		//定义串口接收的标志位变量			//定义接收数据包标志位
 #define JUSTFLOAT_TAIL   {0x00, 0x00, 0x80, 0x7f} // 帧尾[1]
+
+QueueHandle_t xRxQueue = NULL;
+
 /**
   * 函    数：串口初始化
   * 参    数：无
@@ -16,22 +20,25 @@ void Serial_Init(void)
 {
 	/*开启时钟*/
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);	//开启USART1的时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);	//开启GPIOA的时钟
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);    //开启GPIOB的时钟（改用PB6/PB7）
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);     //开启AFIO时钟以支持引脚重映射
+	/*重映射USART1到PB6/PB7*/
+	GPIO_PinRemapConfig(GPIO_Remap_USART1, ENABLE);
 	
 	/*GPIO初始化*/
 	GPIO_InitTypeDef GPIO_InitStructure;
+	/* USART1 remapped pins: PB6 -> TX (AF_PP), PB7 -> RX (IPU) */
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; /* PB6 TX */
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);					//将PA9引脚初始化为复用推挽输出
-	
+	GPIO_Init(GPIOB, &GPIO_InitStructure);                    //将PB6引脚初始化为复用推挽输出（USART1 TX）
+
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7; /* PB7 RX */
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);					//将PA10引脚初始化为上拉输入
-	
-	/*USART初始化*/
-	USART_InitTypeDef USART_InitStructure;					//定义结构体变量
+	GPIO_Init(GPIOB, &GPIO_InitStructure);                    //将PB7引脚初始化为上拉输入（USART1 RX）
+
+	USART_InitTypeDef USART_InitStructure;                    //定义结构体变量
 	USART_InitStructure.USART_BaudRate = 9600;				//波特率
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//硬件流控制，不需要
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;	//模式，发送模式和接收模式均选择
@@ -39,23 +46,55 @@ void Serial_Init(void)
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;	//停止位，选择1位
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;		//字长，选择8位
 	USART_Init(USART1, &USART_InitStructure);				//将结构体变量交给USART_Init，配置USART1
+
+	/* 先创建串口接收队列与任务，避免中断早到导致空指针 */
+	xRxQueue = xQueueCreate(5, sizeof(Serial_RxPacket));
+	if(xRxQueue == NULL) return;
+	BaseType_t xReturn = pdFAIL;
+	xReturn = xTaskCreate(Serial_rxTask, "Serial_rxTask", 512, NULL, tskIDLE_PRIORITY+2, NULL);
+	if(xReturn == pdFAIL) return;
 	
 	/*中断输出配置*/
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);			//开启串口接收数据的中断
 	
-	/*NVIC中断分组*/
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);			//配置NVIC为分组2      //  > :[]
+	/*NVIC中断分组：使用分组4，全部为抢占优先级，便于与FreeRTOS对齐*/
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 	
 	/*NVIC配置*/
 	NVIC_InitTypeDef NVIC_InitStructure;					//定义结构体变量
 	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;		//选择配置NVIC的USART1线
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//指定NVIC线路使能
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;		//指定NVIC线路的抢占优先级为1
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;		//指定NVIC线路的响应优先级为1
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY; // 数值大=优先级低，满足可调用FromISR
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_Init(&NVIC_InitStructure);							//将结构体变量交给NVIC_Init，配置NVIC外设
 	
 	/*USART使能*/
 	USART_Cmd(USART1, ENABLE);								//使能USART1，串口开始运行
+    OLED_ShowString(56, 1, "SerialOK", OLED_6X8);
+}
+
+/*处理Serial*/
+void Serial_rxTask(void *pvParameters)
+{
+    (void)pvParameters;
+    char Rx_buf[SIZE_OF_RXPACKET];
+	for(;;){
+		if (xQueueReceive(xRxQueue, Rx_buf, portMAX_DELAY) == pdPASS)		//如果接收到数据包
+		{
+			//OLED_ShowString(1,56, Rx_buf, OLED_6X8);
+	        //OLED_Update();
+			//Serial_SendString(Rx_buf);
+
+            //OLED_Printf(1, 56, OLED_6X8, "%4d %4d %4d", Rx_buf);
+			
+            int adc1, adc2, adc3;
+            sscanf(Rx_buf, "%4d%4d%4d", &adc1, &adc2, &adc3);
+            //OLED_Printf(1, 56, OLED_6X8, "%d %d %d", adc1, adc2, adc3);
+            OLED_ShowNum(1, 56, adc1, 4, OLED_6X8);
+            OLED_Update();
+			Serial_RxFlag = 0;			//处理完成后，需要将接收数据包标志位清零，否则将无法接收后续数据包
+		}
+    }
 }
 
 /**
@@ -240,10 +279,13 @@ void USART1_IRQHandler(void)
 			{
 				RxState = 2;			//置下一个状态
 			}
-			else						//接收到了正常的数据
+			else					//接收到了正常的数据
 			{
-				Serial_RxPacket[pRxPacket] = RxData;		//将数据存入数据包数组的指定位置
-				pRxPacket ++;			//数据包的位置自增
+				if (pRxPacket < SIZE_OF_RXPACKET - 1)
+				{
+					Serial_RxPacket[pRxPacket] = RxData;		//将数据存入数据包数组的指定位置
+					pRxPacket ++;			//数据包的位置自增
+				}
 			}
 		}
 		/*当前状态为2，接收数据包第二个包尾*/
@@ -251,9 +293,16 @@ void USART1_IRQHandler(void)
 		{
 			if (RxData == '\n')			//如果收到第二个包尾
 			{
+
 				RxState = 0;			//状态归0
 				Serial_RxPacket[pRxPacket] = '\0';			//将收到的字符数据包添加一个字符串结束标志
 				Serial_RxFlag = 1;		//接收数据包标志位置1，成功接收一个数据包
+
+				if (xRxQueue != NULL) {
+					BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+					xQueueSendFromISR(xRxQueue, Serial_RxPacket, &xHigherPriorityTaskWoken);
+					portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+				}
 			}
 		}
 		

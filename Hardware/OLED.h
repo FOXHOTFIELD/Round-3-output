@@ -44,6 +44,8 @@ void OLED_ShowFloatNum(int16_t X, int16_t Y, double Number, uint8_t IntLength, u
 void OLED_ShowImage(int16_t X, int16_t Y, uint8_t Width, uint8_t Height, const uint8_t *Image);
 void OLED_Printf(int16_t X, int16_t Y, uint8_t FontSize, char *format, ...);
 void OLED_ShowString_simplified(int16_t row, char *String);
+void OLED_BufBackUp(void);
+void OLED_BufRestore(void);
 
 /*绘图函数*/
 void OLED_DrawPoint(int16_t X, int16_t Y);

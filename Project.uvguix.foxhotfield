@@ -3649,33 +3649,6 @@
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
       </Doc>
-      <Doc>
-        <Name>.\Start\startup_stm32f10x_md.s</Name>
-        <ColumnNumber>0</ColumnNumber>
-        <TopLine>123</TopLine>
-        <CurrentLine>133</CurrentLine>
-        <Folding>1</Folding>
-        <ContractedFolders></ContractedFolders>
-        <PaneID>0</PaneID>
-      </Doc>
-      <Doc>
-        <Name>.\Start\system_stm32f10x.c</Name>
-        <ColumnNumber>0</ColumnNumber>
-        <TopLine>203</TopLine>
-        <CurrentLine>213</CurrentLine>
-        <Folding>1</Folding>
-        <ContractedFolders></ContractedFolders>
-        <PaneID>0</PaneID>
-      </Doc>
-      <Doc>
-        <Name>.\MiddleWares\tasks.c</Name>
-        <ColumnNumber>0</ColumnNumber>
-        <TopLine>3698</TopLine>
-        <CurrentLine>3708</CurrentLine>
-        <Folding>1</Folding>
-        <ContractedFolders></ContractedFolders>
-        <PaneID>0</PaneID>
-      </Doc>
     </MDIGroup>
   </MDIGroups>
 
