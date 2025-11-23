@@ -98,7 +98,7 @@ static void Menu_KeyTask(void *pvParameters)
 
         OLED_ShowNum(120, 1, (int)curState.psost, 1, OLED_6X8);
         OLED_ShowNum(120, 9, (int)curState.mode, 1, OLED_6X8);
-        OLED_ShowNum(56, 56, flag, 3, OLED_6X8);
+        //OLED_ShowNum(56, 56, flag, 3, OLED_6X8);
         /* 定期刷新 OLED 缓冲到显示，否则仅在其它地方调用 OLED_Update 时才会刷新
            之前的行为是：只有在按键处理（Menu_CMDProcess）调用了 OLED_Update，
            屏幕才会更新，所以看起来“第一次按键后才开始显示”。

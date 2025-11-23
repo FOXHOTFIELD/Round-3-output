@@ -81,10 +81,17 @@ void Serial_rxTask(void *pvParameters)
 	for(;;){
 		if (xQueueReceive(xRxQueue, Rx_buf, portMAX_DELAY) == pdPASS)		//如果接收到数据包
 		{
-			OLED_ShowString(1,56, Rx_buf, OLED_6X8);
-	        OLED_Update();
-			Serial_SendString(Rx_buf);
+			//OLED_ShowString(1,56, Rx_buf, OLED_6X8);
+	        //OLED_Update();
+			//Serial_SendString(Rx_buf);
+
+            //OLED_Printf(1, 56, OLED_6X8, "%4d %4d %4d", Rx_buf);
 			
+            int adc1, adc2, adc3;
+            sscanf(Rx_buf, "%4d%4d%4d", &adc1, &adc2, &adc3);
+            //OLED_Printf(1, 56, OLED_6X8, "%d %d %d", adc1, adc2, adc3);
+            OLED_ShowNum(1, 56, adc1, 4, OLED_6X8);
+            OLED_Update();
 			Serial_RxFlag = 0;			//处理完成后，需要将接收数据包标志位清零，否则将无法接收后续数据包
 		}
     }
@@ -247,7 +254,7 @@ void Serial_SendJustFloat(float *data, uint16_t num)
   *           请确保函数名正确，不能有任何差异，否则中断函数将不能进入
   */
 void USART1_IRQHandler(void)
-{                flag++;
+{
 	static uint8_t RxState = 0;		//定义表示当前状态机状态的静态变量
 	static uint8_t pRxPacket = 0;	//定义表示当前接收数据位置的静态变量
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) == SET)	//判断是否是USART1的接收事件触发的中断
