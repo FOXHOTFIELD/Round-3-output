@@ -1,4 +1,3 @@
-
 #include "myHeader.h"
 #define num_of_option (3)
 

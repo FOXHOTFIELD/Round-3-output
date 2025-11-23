@@ -735,16 +735,6 @@
               <FileType>5</FileType>
               <FilePath>.\Hardware\PID.h</FilePath>
             </File>
-            <File>
-              <FileName>I2C_Master.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\I2C_Master.c</FilePath>
-            </File>
-            <File>
-              <FileName>I2C_Master.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\I2C_Master.h</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

@@ -81,12 +81,6 @@ void Serial_rxTask(void *pvParameters)
 	for(;;){
 		if (xQueueReceive(xRxQueue, Rx_buf, portMAX_DELAY) == pdPASS)		//如果接收到数据包
 		{
-			//OLED_ShowString(1,56, Rx_buf, OLED_6X8);
-	        //OLED_Update();
-			//Serial_SendString(Rx_buf);
-
-            //OLED_Printf(1, 56, OLED_6X8, "%4d %4d %4d", Rx_buf);
-			
             int adc1, adc2, adc3;
             sscanf(Rx_buf, "%4d%4d%4d", &adc1, &adc2, &adc3);
             //OLED_Printf(1, 56, OLED_6X8, "%d %d %d", adc1, adc2, adc3);
