@@ -1,0 +1,23 @@
+引脚说明
+
+    菜单：
+        PA8  -> UP
+        PB15 -> DOWN
+        PB14 -> Sure
+
+    串口：
+        PB6  -> TX
+        PB7  -> RX
+
+    PWM输出：
+        PWMA  -> PA15 TIM2_CH1
+        PWMB  -> PA6  TIM3_CH1
+
+    电机1模式选择：
+        AIN1  -> PA11  AIN2  -> PA12
+
+    电机2模式输出：
+        BIN1  -> PB3   BIN2  -> PB4
+
+    STBY控制：
+        STBY  -> B0
