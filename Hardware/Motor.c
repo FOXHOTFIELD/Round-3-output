@@ -77,9 +77,6 @@ void PWM_Init(void)
     GPIO_IS.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12;     //AIN1 AIN2
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_IS);
-    Motor1_Mode = Motor_Mode_break;
-    GPIO_SetBits(GPIOA, GPIO_Pin_11);
-    GPIO_SetBits(GPIOA, GPIO_Pin_12);                 //初始化均为高电平 制动模式
 
     /*电机2模式输出*/
         /*BIN1 -> PA4 BIN2 -> PA5*/
@@ -87,9 +84,9 @@ void PWM_Init(void)
     GPIO_IS.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;     //BIN1 BIN2
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_IS);
-    Motor2_Mode = Motor_Mode_break;
-    GPIO_SetBits(GPIOA, GPIO_Pin_4);
-    GPIO_SetBits(GPIOA, GPIO_Pin_5);                 //初始化均为高电平 制动模式
+    
+    Motor_SetMode(1, Motor_Mode_stop);                 //初始化均为高电平 制动模式
+    Motor_SetMode(2, Motor_Mode_stop);
 
     /*STBY控制*/
         /*STBY -> B0*/
