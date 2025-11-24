@@ -11,6 +11,16 @@ uint8_t Serial_RxFlag;		//定义串口接收的标志位变量			//定义接收�
 
 QueueHandle_t xRxQueue = NULL;
 
+/* =========================  第二串口 USART2 相关变量  ========================= */
+#define SIZE_OF_RX2PACKET 64                 // USART2 接收包大小（与1号串口一致）
+char Serial2_RxPacket[SIZE_OF_RX2PACKET];    // USART2 接收数据包缓存
+static uint8_t Serial2_RxData;               // USART2 最近接收的字节
+uint8_t Serial2_RxFlag;                      // USART2 接收完成标志
+QueueHandle_t xRx2Queue = NULL;              // USART2 接收队列
+
+/* =========================  第二串口接收处理任务声明  ========================= */
+void Serial2_rxTask(void *pvParameters);
+
 /**
   * 函    数：串口初始化
   * 参    数：无
@@ -301,6 +311,240 @@ void USART1_IRQHandler(void)
 		}
 		
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);		//清除标志位
+	}
+}
+
+/* ============================================================================
+ * 函数：Serial2_Init
+ * 作用：初始化 USART2，实现与现有 USART1 基本一致的功能，包含：
+ *       - PA2 (TX) 推挽复用输出，PA3 (RX) 上拉输入
+ *       - 9600 波特率，8-N-1 格式
+ *       - 开启接收中断，建立接收队列与任务
+ * 注意：须确保 FreeRTOS 已正常启动环境；若初始化失败则直接返回。
+ * ============================================================================ */
+void Serial2_Init(void)
+{
+	/* 开启外设与 GPIO 时钟 */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE); // USART2 位于 APB1
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);  // PA2 / PA3 引脚
+
+	/* 配置 GPIOA PA2 -> TX 复用推挽 */
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	/* 配置 GPIOA PA3 -> RX 上拉输入 */
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	/* 配置 USART2 参数 */
+	USART_InitTypeDef USART_InitStructure;
+	USART_InitStructure.USART_BaudRate = 9600;                                   // 波特率
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // 无硬件流控
+	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;              // 允许收发
+	USART_InitStructure.USART_Parity = USART_Parity_No;                          // 无奇偶校验
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;                       // 1 位停止位
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;                  // 8 位数据位
+	USART_Init(USART2, &USART_InitStructure);
+
+	/* 创建接收队列和任务（先于中断使能） */
+	xRx2Queue = xQueueCreate(5, sizeof(Serial2_RxPacket));
+	if (xRx2Queue == NULL) return;
+	BaseType_t xReturn = xTaskCreate(Serial2_rxTask, "Serial2_rxTask", 512, NULL, tskIDLE_PRIORITY+2, NULL);
+	if (xReturn == pdFAIL) return;
+	xReturn = xTaskCreate(vHostTask, "vHostTask", 128, NULL, tskIDLE_PRIORITY+1, NULL);
+	if (xReturn == pdFAIL) return;
+
+	/* 开启接收中断 */
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+
+	/* NVIC 配置（优先级分组已在 Serial_Init 中设为 Group4，可重复调用） */
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	NVIC_InitTypeDef NVIC_InitStructure;
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY; // 可安全使用 FromISR
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_Init(&NVIC_InitStructure);
+
+	/* 使能 USART2 */
+	USART_Cmd(USART2, ENABLE);
+	OLED_ShowString(56, 2, "Serial2OK", OLED_6X8);
+}
+
+//先主机上传数据
+void vHostTask(void *pvParameters)
+{
+    float arr[3];
+    double num;
+    for(;;)
+    {
+        arr[0] = TargetSpeed;
+        Serial2_SendJustFloat(arr, 1);
+    }
+}
+
+/* ============================================================================
+ * 函数：Serial2_rxTask
+ * 作用：USART2 接收数据包处理任务，与 Serial_rxTask 类似。
+ * 说明：当前示例仅演示解析与显示，可按需扩展。
+ * ============================================================================ */
+void Serial2_rxTask(void *pvParameters)
+{
+	(void)pvParameters;
+	char Rx_buf[SIZE_OF_RX2PACKET];
+	for(;;){
+		if (xQueueReceive(xRx2Queue, Rx_buf, portMAX_DELAY) == pdPASS)
+		{
+			///* 简单示例：将前三个 4 位数解析显示 */
+			//int v1, v2, v3;
+			//sscanf(Rx_buf, "%4d%4d%4d", &v1, &v2, &v3);
+			//OLED_ShowNum(2, 56, v1, 4, OLED_6X8);
+			//OLED_Update();
+			//Serial2_RxFlag = 0; // 清除标志，允许后续接收
+		}
+	}
+}
+
+/*
+ * 函数：Serial2_SendByte
+ * 作用：USART2 发送单个字节
+ */
+void Serial2_SendByte(uint8_t Byte)
+{
+	USART_SendData(USART2, Byte);
+	while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+}
+
+/* ============================================================================
+ * 函数：Serial2_SendArray
+ * ============================================================================ */
+void Serial2_SendArray(uint8_t *Array, uint16_t Length)
+{
+	for(uint16_t i=0; i<Length; i++){
+		Serial2_SendByte(Array[i]);
+	}
+}
+
+/* ============================================================================
+ * 函数：Serial2_SendString
+ * ============================================================================ */
+void Serial2_SendString(char *String)
+{
+	for(uint16_t i=0; String[i] != '\0'; i++){
+		Serial2_SendByte(String[i]);
+	}
+}
+
+/* ============================================================================
+ * 函数：Serial2_SendNumber
+ * 说明：定长数字输出，不足位数前面补 0
+ * ============================================================================ */
+void Serial2_SendNumber(uint32_t Number, uint8_t Length)
+{
+	for(uint8_t i=0; i<Length; i++){
+		Serial2_SendByte(Number / Serial_Pow(10, Length - i - 1) % 10 + '0');
+	}
+}
+
+/* ============================================================================
+ * 函数：Serial2_Printf
+ * ============================================================================ */
+void Serial2_Printf(char *format, ...)
+{
+	char buf[100];
+	va_list arg;
+	va_start(arg, format);
+	vsprintf(buf, format, arg);
+	va_end(arg);
+	Serial2_SendString(buf);
+}
+
+/* ============================================================================
+ * 函数：Serial2_GetRxFlag / Serial2_GetRxData
+ * ============================================================================ */
+uint8_t Serial2_GetRxFlag(void)
+{
+	if(Serial2_RxFlag){
+		Serial2_RxFlag = 0;
+		return 1;
+	}
+	return 0;
+}
+
+uint8_t Serial2_GetRxData(void)
+{
+	return Serial2_RxData;
+}
+
+/* ============================================================================
+ * 函数：Serial2_SendJustFloat
+ * 作用：VOFA+ JustFloat 协议简单帧（与 Serial_SendJustFloat 相同）
+ * ============================================================================ */
+void Serial2_SendJustFloat(float *data, uint16_t num)
+{
+	uint8_t tail[] = JUSTFLOAT_TAIL;
+	for(uint16_t i=0; i<num; i++){
+		uint8_t *p = (uint8_t *)&data[i];
+		Serial2_SendArray(p, 4);
+	}
+	Serial2_SendArray(tail, sizeof(tail));
+}
+
+/* ============================================================================
+ * 函数：USART2_IRQHandler
+ * 作用：USART2 中断服务函数，实现与 USART1 一致的包协议：@ 开始，\r\n 结束
+ * ============================================================================ */
+void USART2_IRQHandler(void)
+{
+	static uint8_t RxState = 0;      // 状态机当前状态
+	static uint8_t pRxPacket = 0;    // 当前填充位置索引
+	if (USART_GetITStatus(USART2, USART_IT_RXNE) == SET)
+	{
+		uint8_t RxData = USART_ReceiveData(USART2); // 读取数据
+		Serial2_RxData = RxData;                    // 保存最后一个字节
+
+		if (RxState == 0)
+		{
+			if (RxData == '@' && Serial2_RxFlag == 0)
+			{
+				RxState = 1;
+				pRxPacket = 0;
+			}
+		}
+		else if (RxState == 1)
+		{
+			if (RxData == '\r')
+			{
+				RxState = 2;
+			}
+			else
+			{
+				if (pRxPacket < SIZE_OF_RX2PACKET - 1)
+				{
+					Serial2_RxPacket[pRxPacket++] = RxData;
+				}
+			}
+		}
+		else if (RxState == 2)
+		{
+			if (RxData == '\n')
+			{
+				RxState = 0;
+				Serial2_RxPacket[pRxPacket] = '\0';
+				Serial2_RxFlag = 1;
+				if (xRx2Queue != NULL) {
+					BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+					xQueueSendFromISR(xRx2Queue, Serial2_RxPacket, &xHigherPriorityTaskWoken);
+					portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+				}
+			}
+		}
+		USART_ClearITPendingBit(USART2, USART_IT_RXNE); // 清除中断标志
 	}
 }
 
