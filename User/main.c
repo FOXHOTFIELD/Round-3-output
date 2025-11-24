@@ -14,16 +14,17 @@ int flag = 0;
 int main(void)
 {
 	/* 系统初始化（startup/系统初始化通常已在启动代码中完成） */
-	//SystemInit();
+	SystemInit();
     OLED_Init();
     Menu_Init();
 
 	Serial_Init();
+    Serial2_Init();
     PWM_Init();    //Motor_SetMode(1, Motor_Mode_frd_rotation);
 
 
 	/* 启动调度 */
-	//vTaskStartScheduler();
+	vTaskStartScheduler();
 
 	///* 若调度器返回，进入死循环 */
     
