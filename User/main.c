@@ -17,6 +17,7 @@ int main(void)
     Menu_Init();
 
 	Serial_Init();
+    Serial2_Init();
     PWM_Init();    //Motor_SetMode(1, Motor_Mode_frd_rotation);
     PID_Init();
 

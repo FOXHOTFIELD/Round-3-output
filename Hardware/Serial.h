@@ -23,6 +23,10 @@
 extern char Serial_RxPacket[];
 extern QueueHandle_t Serial_RxSemaphore;
 
+/* 新增：USART2 的接收缓冲与标志变量外部声明 */
+extern char Serial2_RxPacket[];
+extern uint8_t Serial2_RxFlag;
+
 void Serial_Init(void);
 void Serial_DeInit(void);
 void Serial_SendByte(uint8_t Byte);
@@ -37,6 +41,16 @@ void processCmd(void);
 uint8_t Serial_GetRxFlag(void);
 uint8_t Serial_GetRxData(void);
 
-extern SemaphoreHandle_t xSerialSemphr;
+/* ================= 新增 USART2 相关接口 ================= */
+void Serial2_Init(void);              // USART2 初始化（PA2/PA3）
+void Serial2_SendByte(uint8_t Byte);  // USART2 发送单字节
+void Serial2_SendArray(uint8_t *Array, uint16_t Length);   // USART2 发送数组
+void Serial2_SendString(char *String);                     // USART2 发送字符串
+void Serial2_SendNumber(uint32_t Number, uint8_t Length);  // USART2 发送数字（定长）
+void Serial2_Printf(char *format, ...);                    // USART2 printf 封装
+uint8_t Serial2_GetRxFlag(void);      // USART2 获取接收完成标志
+uint8_t Serial2_GetRxData(void);      // USART2 获取最后接收字节
+void Serial2_SendJustFloat(float *data, uint16_t num);     // USART2 发送 VOFA+ JustFloat 数据
+void vHostTask(void *pvParameters);
 
 #endif
