@@ -152,7 +152,7 @@ void TIM1_UP_IRQHandler(void)                             // TIM1更新中断服
     if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET)    // 检查更新中断标志
     {
 
-        PIDControl();
+        //PIDControl();
         TIM_ClearITPendingBit(TIM1, TIM_IT_Update);       // 清除中断标志位[4,5](@ref)
     }
 }
@@ -235,26 +235,50 @@ void Motor_SetMode(int numMotor, enum Motor_Mode Mode)
     }
 }
 /**
-  * 函    数：直流电机1设置PWM
+  * 函    数：直流电机设置PWM
+  * 参    数：index 选择设置哪个电机 1或2
   * 参    数：PWM 要设置的PWM值，范围：-100~100（负数为反转）
   * 返 回 值：无
   */
-void Motor1_SetPWM(int8_t PWM)
+void Motor_SetPWM(uint8_t index, int8_t PWM)
 {
-	if (PWM >= 0)							//如果设置正转的PWM
-	{
-		//GPIO_ResetBits(GPIOB, GPIO_Pin_12);	//PB12置低电平
-		//GPIO_SetBits(GPIOB, GPIO_Pin_13);	//PB13置高电平
-        Motor_SetMode(1, Motor_Mode_frd_rotation);
-		Motor1_SetCompare(PWM);				//设置PWM占空比
-	}
-	else									//否则，即设置反转的速度值
-	{
-		//GPIO_SetBits(GPIOB, GPIO_Pin_12);	//PB12置高电平
-		//GPIO_ResetBits(GPIOB, GPIO_Pin_13);	//PB13置低电平
-        Motor_SetMode(1, Motor_Mode_rvs_rotation);
-		Motor1_SetCompare(-PWM);				//设置PWM占空比
-	}
+    switch (index)
+    {
+    case 1:
+        /* code */
+        if (PWM >= 0)							//如果设置正转的PWM
+        {
+            //GPIO_ResetBits(GPIOB, GPIO_Pin_12);	//PB12置低电平
+            //GPIO_SetBits(GPIOB, GPIO_Pin_13);	//PB13置高电平
+            Motor_SetMode(1, Motor_Mode_frd_rotation);
+            Motor1_SetCompare(PWM);				//设置PWM占空比
+        }
+        else									//否则，即设置反转的速度值
+        {
+            //GPIO_SetBits(GPIOB, GPIO_Pin_12);	//PB12置高电平
+            //GPIO_ResetBits(GPIOB, GPIO_Pin_13);	//PB13置低电平
+            Motor_SetMode(1, Motor_Mode_rvs_rotation);
+            Motor1_SetCompare(-PWM);				//设置PWM占空比
+        }
+        break;
+    case 2:
+        if (PWM >= 0)							//如果设置正转的PWM
+        {
+            //GPIO_ResetBits(GPIOB, GPIO_Pin_12);	//PB12置低电平
+            //GPIO_SetBits(GPIOB, GPIO_Pin_13);	//PB13置高电平
+            Motor_SetMode(2, Motor_Mode_frd_rotation);
+            Motor2_SetCompare(PWM);				//设置PWM占空比
+        }
+        else									//否则，即设置反转的速度值
+        {
+            //GPIO_SetBits(GPIOB, GPIO_Pin_12);	//PB12置高电平
+            //GPIO_ResetBits(GPIOB, GPIO_Pin_13);	//PB13置低电平
+            Motor_SetMode(2, Motor_Mode_rvs_rotation);
+            Motor2_SetCompare(-PWM);				//设置PWM占空比
+        }
+    default:
+        break;
+    }
 }
 
 /**
@@ -264,20 +288,6 @@ void Motor1_SetPWM(int8_t PWM)
   */
 void Motor2_SetPWM(int8_t PWM)
 {
-	if (PWM >= 0)							//如果设置正转的PWM
-	{
-		//GPIO_ResetBits(GPIOB, GPIO_Pin_12);	//PB12置低电平
-		//GPIO_SetBits(GPIOB, GPIO_Pin_13);	//PB13置高电平
-        Motor_SetMode(2, Motor_Mode_frd_rotation);
-		Motor2_SetCompare(PWM);				//设置PWM占空比
-	}
-	else									//否则，即设置反转的速度值
-	{
-		//GPIO_SetBits(GPIOB, GPIO_Pin_12);	//PB12置高电平
-		//GPIO_ResetBits(GPIOB, GPIO_Pin_13);	//PB13置低电平
-        Motor_SetMode(2, Motor_Mode_rvs_rotation);
-		Motor2_SetCompare(-PWM);				//设置PWM占空比
-	}
 }
 
 /**

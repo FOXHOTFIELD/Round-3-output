@@ -21,7 +21,7 @@
 #endif
 
 extern char Serial_RxPacket[];
-extern uint8_t Serial_RxFlag;
+extern QueueHandle_t Serial_RxSemaphore;
 
 void Serial_Init(void);
 void Serial_DeInit(void);
@@ -36,5 +36,7 @@ void processCmd(void);
 /* 以下两个接口用于获取接收标志与接收数据 */
 uint8_t Serial_GetRxFlag(void);
 uint8_t Serial_GetRxData(void);
+
+extern SemaphoreHandle_t xSerialSemphr;
 
 #endif

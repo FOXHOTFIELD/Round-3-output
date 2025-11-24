@@ -5,11 +5,13 @@
 
 #define SIZE_OF_RXPACKET 64
 char Serial_RxPacket[SIZE_OF_RXPACKET];				//定义接收数据包数组，数据包格式"@MSG\r\n"
-uint8_t Serial_RxData;		//定义串口接收的数据变量
-uint8_t Serial_RxFlag;		//定义串口接收的标志位变量			//定义接收数据包标志位
+uint8_t Serial_RxData;		//(uint8_t)定义串口接收的数据变量
+uint8_t Serial_RxFlag;		//(uint8_t)定义串口接收的标志位变量			//定义接收数据包标志位
 #define JUSTFLOAT_TAIL   {0x00, 0x00, 0x80, 0x7f} // 帧尾[1]
 
-QueueHandle_t xRxQueue = NULL;
+/*Freertos*/
+QueueHandle_t xRxQueue = NULL;          //(QueueHandle_t)Freertos下队列 传输input数据
+SemaphoreHandle_t xSerialSemphr = NULL; //(SemaphoreHandle_t)Freertos下的信号量 标记来自input数据收到
 
 /**
   * 函    数：串口初始化
@@ -39,7 +41,7 @@ void Serial_Init(void)
 	GPIO_Init(GPIOB, &GPIO_InitStructure);                    //将PB7引脚初始化为上拉输入（USART1 RX）
 
 	USART_InitTypeDef USART_InitStructure;                    //定义结构体变量
-	USART_InitStructure.USART_BaudRate = 9600;				//波特率
+	USART_InitStructure.USART_BaudRate = 115200;				//波特率
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//硬件流控制，不需要
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;	//模式，发送模式和接收模式均选择
 	USART_InitStructure.USART_Parity = USART_Parity_No;		//奇偶校验，不需要
@@ -47,13 +49,6 @@ void Serial_Init(void)
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;		//字长，选择8位
 	USART_Init(USART1, &USART_InitStructure);				//将结构体变量交给USART_Init，配置USART1
 
-	/* 先创建串口接收队列与任务，避免中断早到导致空指针 */
-	xRxQueue = xQueueCreate(5, sizeof(Serial_RxPacket));
-	if(xRxQueue == NULL) return;
-	BaseType_t xReturn = pdFAIL;
-	xReturn = xTaskCreate(Serial_rxTask, "Serial_rxTask", 512, NULL, tskIDLE_PRIORITY+2, NULL);
-	if(xReturn == pdFAIL) return;
-	
 	/*中断输出配置*/
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);			//开启串口接收数据的中断
 	
@@ -70,22 +65,51 @@ void Serial_Init(void)
 	
 	/*USART使能*/
 	USART_Cmd(USART1, ENABLE);								//使能USART1，串口开始运行
+
+	/* 先创建串口接收队列与任务，避免中断早到导致空指针 */
+	xRxQueue = xQueueCreate(5, sizeof(Serial_RxPacket));
+	if(xRxQueue == NULL) return;
+	BaseType_t xReturn = pdFAIL;
+	xReturn = xTaskCreate(vSerial_rxTask, "vSerial_rxTask", 512, NULL, tskIDLE_PRIORITY+3, NULL);
+	if(xReturn == pdFAIL) return;
+
+    xSerialSemphr = xSemaphoreCreateBinary();
+    //xSemaphoreGive(xSerialSemphr);
+
     OLED_ShowString(56, 1, "SerialOK", OLED_6X8);
 }
 
 /*处理Serial*/
-void Serial_rxTask(void *pvParameters)
+void vSerial_rxTask(void *pvParameters)
 {
     (void)pvParameters;
     char Rx_buf[SIZE_OF_RXPACKET];
 	for(;;){
 		if (xQueueReceive(xRxQueue, Rx_buf, portMAX_DELAY) == pdPASS)		//如果接收到数据包
 		{
-            int adc1, adc2, adc3;
-            sscanf(Rx_buf, "%4d%4d%4d", &adc1, &adc2, &adc3);
-            //OLED_Printf(1, 56, OLED_6X8, "%d %d %d", adc1, adc2, adc3);
-            OLED_ShowNum(1, 56, adc1, 4, OLED_6X8);
+            //sscanf(Rx_buf, "%4d%4d", &(Motor1_Data.Actual), &(Motor2_Data.Actual));
+            //OLED_ShowSignedNum(1, 56, Motor1_Data.Actual, 4, OLED_6X8);
+            //OLED_UpdateArea(1, 47, );
+			/* 解析通过 Serial_mySend 发送的小端 int16_t 数据：s1L,s1H,s2L,s2H */
+			int16_t s1 = (int16_t)(
+				((uint16_t)(uint8_t)Rx_buf[0]) |
+				((uint16_t)(uint8_t)Rx_buf[1] << 8)
+			);
+			int16_t s2 = (int16_t)(
+				((uint16_t)(uint8_t)Rx_buf[2]) |
+				((uint16_t)(uint8_t)Rx_buf[3] << 8)
+			);
+
+			/* 直接赋值 int16 到 Actual */
+			Motor1_Data.Actual = s1;
+			Motor2_Data.Actual = s2;
+
+            OLED_ShowSignedNum(1, 56, Motor1_Data.Actual, 4, OLED_6X8);
+            //OLED_ShowSignedNum(56, 56, Motor2_Data.Actual, 4, OLED_6X8);
             OLED_Update();
+
+            xSemaphoreGive(xSerialSemphr);
+
 			Serial_RxFlag = 0;			//处理完成后，需要将接收数据包标志位清零，否则将无法接收后续数据包
 		}
     }
