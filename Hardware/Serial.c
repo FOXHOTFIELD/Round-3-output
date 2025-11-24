@@ -86,7 +86,7 @@ void Serial_Init(void)
     xSerialSemphr = xSemaphoreCreateBinary();
     //xSemaphoreGive(xSerialSemphr);
 
-    OLED_ShowString(56, 1, "SerialOK", OLED_6X8);
+    //OLED_ShowString(56, 1, "SerialOK", OLED_6X8);
 }
 
 /*处理Serial*/
@@ -397,18 +397,19 @@ void Serial2_Init(void)
 
 	/* 使能 USART2 */
 	USART_Cmd(USART2, ENABLE);
-	OLED_ShowString(56, 2, "Serial2OK", OLED_6X8);
+	//OLED_ShowString(56, 2, "Serial2OK", OLED_6X8);
 }
 
 //先主机上传数据
 void vHostTask(void *pvParameters)
 {
     float arr[3];
-    double num;
     for(;;)
     {
-        arr[0] = TargetSpeed;
-        Serial2_SendJustFloat(arr, 1);
+        arr[0] = Motor1_Data.Actual;
+        arr[1] = Motor1_Data.Out;
+        arr[2] = Motor1_Data.Target;
+        Serial2_SendJustFloat(arr, 3);
     }
 }
 
@@ -424,12 +425,25 @@ void Serial2_rxTask(void *pvParameters)
 	for(;;){
 		if (xQueueReceive(xRx2Queue, Rx_buf, portMAX_DELAY) == pdPASS)
 		{
-			///* 简单示例：将前三个 4 位数解析显示 */
-			//int v1, v2, v3;
-			//sscanf(Rx_buf, "%4d%4d%4d", &v1, &v2, &v3);
-			//OLED_ShowNum(2, 56, v1, 4, OLED_6X8);
-			//OLED_Update();
-			//Serial2_RxFlag = 0; // 清除标志，允许后续接收
+            	float data = 0;
+				char Cmd;
+            	sscanf(Rx_buf, "%c%f", &Cmd, &data);
+				//OLED_ShowString(2, 5, Cmd);
+                //OLED_ShowString(10, 1, Rx_buf, OLED_6X8);
+				if(Cmd == 'S') {
+                    //BaseSpeed = data;
+                    BaseSpeed = data;
+                    OLED_ClearArea(100, 17, 8, 16);
+                    OLED_ShowSignedNum(100, 17, BaseSpeed, 2, OLED_8X16);
+                }
+				else if(Cmd == 'i') Ki = data;
+				else if(Cmd == 'p') Kp = data;
+				else if(Cmd == 'd') Kd = data;
+
+                OLED_ShowFloatNum(15, 1, Kp,1, 2, OLED_6X8);
+                OLED_ShowFloatNum(50, 1, Ki,1, 2, OLED_6X8);
+                OLED_ShowFloatNum(85, 1, Kd,1, 2, OLED_6X8);
+                Serial2_RxFlag = 0;
 		}
 	}
 }

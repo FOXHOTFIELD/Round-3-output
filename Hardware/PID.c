@@ -38,6 +38,7 @@ static void PIDControl(uint8_t index, struct MOTOR *motor)
     ///////////////////////////////////////////////////////Actual = Motor1_Speed;
     /* 将菜单设定的 BaseSpeed 作为目标速度（setpoint） */
     motor->Target = (float)BaseSpeed;
+    OLED_ShowSignedNum(90, 56, motor->Target, 3, OLED_6X8);
         
     /*获取本次误差、上次误差和上上次误差*/
     motor ->Error2 = motor ->Error1;            //获取上上次误差
