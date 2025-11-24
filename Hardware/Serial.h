@@ -21,7 +21,10 @@
 #endif
 
 extern char Serial_RxPacket[];
-extern uint8_t Serial_RxFlag;
+extern QueueHandle_t Serial_RxSemaphore;
+
+/* 新增：串口接收信号量外部声明 */
+extern SemaphoreHandle_t xSerialSemphr;
 
 /* 新增：USART2 的接收缓冲与标志变量外部声明 */
 extern char Serial2_RxPacket[];

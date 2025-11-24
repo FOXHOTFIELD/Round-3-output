@@ -1,15 +1,16 @@
 #include "myHeader.h"
 
-float Kp = 1, Ki = 0, Kd = 0;					//比例项，积分项，微分项的权重
+float Kp = 0.3, Ki = 0.4, Kd = 0;					//比例项，积分项，微分项的权重
 enum Motor_Mode Motor1_Mode;
 enum Motor_Mode Motor2_Mode;
 MenuState curState = {
     .mode = Wait,
     .psost = start
 };
-int TargetSpeed = 20;
+volatile int BaseSpeed = 50;
 int flag = 0;
 
+struct MOTOR Motor1_Data = {0}, Motor2_Data = {0};
 
 int main(void)
 {
@@ -21,7 +22,7 @@ int main(void)
 	Serial_Init();
     Serial2_Init();
     PWM_Init();    //Motor_SetMode(1, Motor_Mode_frd_rotation);
-
+    PID_Init();
 
 	/* 启动调度 */
 	vTaskStartScheduler();
@@ -29,6 +30,5 @@ int main(void)
 	///* 若调度器返回，进入死循环 */
     
 	while (1)
-	{    Motor2_SetPWM(-50);
-	}
+	{}
 }

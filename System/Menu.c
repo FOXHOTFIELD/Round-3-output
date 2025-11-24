@@ -10,7 +10,7 @@ static volatile BaseType_t oled_update_blocked = pdFALSE;
 
 char menu[num_of_option][16] = {
     {"  Start"},
-    {"  Speed"},
+    {"  BaseSpeed"},
     {"  Thrd Correct"}
 };
 
@@ -126,7 +126,7 @@ void Menu_Init(void)
     //OLED_ShowString_simplified(1, menu[0]);
     //OLED_ShowString_simplified(2, menu[1]);
     OLED_ShowString_simplified(1, "->");
-    OLED_ShowSignedNum(100, 17, TargetSpeed, 2, OLED_8X16);
+    OLED_ShowSignedNum(100, 17, BaseSpeed, 2, OLED_8X16);
 
     // 创建按键事件队列（长度 10），每个元素为 KeyEvent_t
     if (xKeyQueue == NULL) {
@@ -238,9 +238,11 @@ static void Menu_changeSpeed(KeyEvent_t ev)
 {
     OLED_ClearArea(100, 17, 8, 16);
     if(curState.mode == Edit && curState.psost == speed){
-        TargetSpeed += (ev == KEY_EVENT_UP ? 5 : -5);
+        BaseSpeed += (ev == KEY_EVENT_UP ? 5 : -5);
+        //if (BaseSpeed > 99) BaseSpeed = 99;  // 与显示宽度/占空限制对齐
+        //if (BaseSpeed < 0)  BaseSpeed = 0;
     }
-    OLED_ShowSignedNum(100, 17, TargetSpeed, 2, OLED_8X16);
+    OLED_ShowSignedNum(100, 17, BaseSpeed, 2, OLED_8X16);
 }
 
 static void Menu_prepareRun(KeyEvent_t ev){
