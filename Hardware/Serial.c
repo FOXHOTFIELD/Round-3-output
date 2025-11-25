@@ -115,8 +115,9 @@ void vSerial_rxTask(void *pvParameters)
 			Motor2_Data.Actual = s2;
 
             OLED_ShowSignedNum(1, 56, Motor1_Data.Actual, 4, OLED_6X8);
-            //OLED_ShowSignedNum(56, 56, Motor2_Data.Actual, 4, OLED_6X8);
-            OLED_Update();
+            OLED_ShowSignedNum(31, 56, Motor2_Data.Actual, 4, OLED_6X8);
+            
+            if(oled_update_blocked != pdTRUE) OLED_Update();
 
             xSemaphoreGive(xSerialSemphr);
 
@@ -400,15 +401,20 @@ void Serial2_Init(void)
 	//OLED_ShowString(56, 2, "Serial2OK", OLED_6X8);
 }
 
-//先主机上传数据
+//向主机上传数据
+//在Serial2_Init中创建
 void vHostTask(void *pvParameters)
 {
     float arr[3];
     for(;;)
     {
-        arr[0] = Motor1_Data.Actual;
-        arr[1] = Motor1_Data.Out;
-        arr[2] = Motor1_Data.Target;
+//        arr[0] = Motor1_Data.Actual;
+        //arr[1] = Motor1_Data.Out;
+        //arr[2] = Motor1_Data.Target;
+        //OLED_ShowSignedNum(15, 1, Motor1_Data.Target, 2, OLED_6X8);
+        arr[0] = Motor2_Data.Actual;
+        arr[1] = Motor2_Data.Out;
+        arr[2] = Motor2_Data.Target;
         Serial2_SendJustFloat(arr, 3);
     }
 }
@@ -436,13 +442,21 @@ void Serial2_rxTask(void *pvParameters)
                     OLED_ClearArea(100, 17, 8, 16);
                     OLED_ShowSignedNum(100, 17, BaseSpeed, 2, OLED_8X16);
                 }
-				else if(Cmd == 'i') Ki = data;
-				else if(Cmd == 'p') Kp = data;
-				else if(Cmd == 'd') Kd = data;
+				//else if(Cmd == 'i') Motor1_Data.Ki = data;
+				//else if(Cmd == 'p') Motor1_Data.Kp = data;
+				//else if(Cmd == 'd') Motor1_Data.Kd = data;
+				//OLED_ShowFloatNum(15, 1, Motor1_Data.Kp,1, 2, OLED_6X8);
+				//OLED_ShowFloatNum(50, 1, Motor1_Data.Ki,1, 2, OLED_6X8);
+				//OLED_ShowFloatNum(85, 1, Motor1_Data.Kd,1, 2, OLED_6X8);
+				else if(Cmd == 'i') Motor2_Data.Ki = data;
+				else if(Cmd == 'p') Motor2_Data.Kp = data;
+				else if(Cmd == 'd') Motor2_Data.Kd = data;
 
-                OLED_ShowFloatNum(15, 1, Kp,1, 2, OLED_6X8);
-                OLED_ShowFloatNum(50, 1, Ki,1, 2, OLED_6X8);
-                OLED_ShowFloatNum(85, 1, Kd,1, 2, OLED_6X8);
+
+				OLED_ShowFloatNum(15, 1, Motor2_Data.Kp,1, 2, OLED_6X8);
+				OLED_ShowFloatNum(50, 1, Motor2_Data.Ki,1, 2, OLED_6X8);
+                OLED_ShowFloatNum(85, 1, Motor2_Data.Kd, 1, 2, OLED_6X8);
+                if(oled_update_blocked != pdTRUE) OLED_Update();
                 Serial2_RxFlag = 0;
 		}
 	}

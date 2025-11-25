@@ -1,6 +1,4 @@
 #include "myHeader.h"
-
-float Kp = 0.3, Ki = 0.4, Kd = 0;					//比例项，积分项，微分项的权重
 enum Motor_Mode Motor1_Mode;
 enum Motor_Mode Motor2_Mode;
 MenuState curState = {
@@ -10,7 +8,29 @@ MenuState curState = {
 volatile int BaseSpeed = 50;
 int flag = 0;
 
-struct MOTOR Motor1_Data = {0}, Motor2_Data = {0};
+struct MOTOR Motor1_Data = {
+	0,
+	0.0f,
+	0.0f,
+	0.0f,
+	0.0f,
+	0.0f,
+	0.3f,
+	0.4f,
+	0.0f
+};
+
+struct MOTOR Motor2_Data = {
+	0,
+	0.0f,
+	0.0f,
+	0.0f,
+	0.0f,
+	0.0f,
+	0.2f,
+	0.3f,
+	0.0f
+};
 
 int main(void)
 {
