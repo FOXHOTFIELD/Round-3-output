@@ -116,7 +116,8 @@ void vSerial_rxTask(void *pvParameters)
 
             OLED_ShowSignedNum(1, 56, Motor1_Data.Actual, 4, OLED_6X8);
             OLED_ShowSignedNum(31, 56, Motor2_Data.Actual, 4, OLED_6X8);
-            OLED_Update();
+            
+            if(oled_update_blocked != pdTRUE) OLED_Update();
 
             xSemaphoreGive(xSerialSemphr);
 
@@ -407,9 +408,10 @@ void vHostTask(void *pvParameters)
     float arr[3];
     for(;;)
     {
-        //arr[0] = Motor1_Data.Actual;
+//        arr[0] = Motor1_Data.Actual;
         //arr[1] = Motor1_Data.Out;
         //arr[2] = Motor1_Data.Target;
+        //OLED_ShowSignedNum(15, 1, Motor1_Data.Target, 2, OLED_6X8);
         arr[0] = Motor2_Data.Actual;
         arr[1] = Motor2_Data.Out;
         arr[2] = Motor2_Data.Target;
@@ -450,9 +452,11 @@ void Serial2_rxTask(void *pvParameters)
 				else if(Cmd == 'p') Motor2_Data.Kp = data;
 				else if(Cmd == 'd') Motor2_Data.Kd = data;
 
+
 				OLED_ShowFloatNum(15, 1, Motor2_Data.Kp,1, 2, OLED_6X8);
 				OLED_ShowFloatNum(50, 1, Motor2_Data.Ki,1, 2, OLED_6X8);
-				OLED_ShowFloatNum(85, 1, Motor2_Data.Kd,1, 2, OLED_6X8);
+                OLED_ShowFloatNum(85, 1, Motor2_Data.Kd, 1, 2, OLED_6X8);
+                if(oled_update_blocked != pdTRUE) OLED_Update();
                 Serial2_RxFlag = 0;
 		}
 	}

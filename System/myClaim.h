@@ -3,6 +3,7 @@
 #define __MYCLAIM_H
 extern volatile int16_t Encoder_Count;					//全局变量（volatile），用于计数旋转编码器的增量值
 
+extern volatile BaseType_t oled_update_blocked;
 
 enum Motor_Mode{
     Motor_Mode_break,

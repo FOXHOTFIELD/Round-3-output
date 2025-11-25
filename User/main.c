@@ -27,8 +27,8 @@ struct MOTOR Motor2_Data = {
 	0.0f,
 	0.0f,
 	0.0f,
+	0.2f,
 	0.3f,
-	0.0f,
 	0.0f
 };
 

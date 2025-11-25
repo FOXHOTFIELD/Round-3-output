@@ -1,5 +1,6 @@
 #include "myHeader.h"
 #include <math.h>
+#include <string.h>
 
 // 在文件开头，定义积分分离阈值（根据实际系统调整此值）
 #define Outer_INTEGRAL_SEPARATION_THRESHOLD 200
@@ -24,12 +25,24 @@ static void vPIDTask(void *pvParameters)
 
     for(;;){
         if(xSemaphoreTake(xSerialSemphr, portMAX_DELAY) == pdTRUE){
-            //PIDControl(1, &Motor1_Data);
-            PIDControl(2, &Motor2_Data);
+            if(curState.mode == Run) {
+                STBY_cmd(ENABLE);
+                PIDControl(1, &Motor1_Data);
+                PIDControl(2, &Motor2_Data);
+            }else {
+                STBY_cmd(DISABLE);
+            }
         }
     }
 }
 
+/*Motor数据在开始Run时清零 避免起步突冲*/
+void Motor_DateClear(void)
+{
+    int aera = sizeof(int16_t) + 3 * sizeof(float);
+    memset(&Motor1_Data, 0, aera);
+    memset(&Motor2_Data, 0, aera);
+}
 
 /*具体的PID控制操作*/
 static void PIDControl(uint8_t index, struct MOTOR *motor)

@@ -6,7 +6,7 @@ static QueueHandle_t xKeyQueue = NULL;
 // 菜单显示任务句柄，用于接收通知唤醒刷新
 static TaskHandle_t xMenuShowHandle = NULL;
 // 当某些操作（如准备运行）需要临时阻止自动刷新时置位
-static volatile BaseType_t oled_update_blocked = pdFALSE;
+volatile BaseType_t oled_update_blocked = pdFALSE;
 
 char menu[num_of_option][16] = {
     {"  Start"},
@@ -173,13 +173,11 @@ void Menu_CMDProcess(KeyEvent_t ev)
         }else if (ev == KEY_EVENT_SURE)
         {
             if(curState.psost == speed) Menu_turnEdit();
-            if(curState.psost == start) Menu_prepareRun(ev);
+            else if(curState.psost == start) Menu_prepareRun(ev);
         }else if (ev == KEY_EVENT_BACK)
         {
             /* code */
         }
-        
-        
         break;
     case Edit:
         if(ev == KEY_EVENT_SURE){
@@ -188,7 +186,11 @@ void Menu_CMDProcess(KeyEvent_t ev)
         {
             Menu_changeSpeed(ev);
         }
-        
+    case Run:
+        if(ev == KEY_EVENT_SURE) {
+            curState.mode = Wait;
+            Motor_DateClear();
+        }
     default:
         break;
     }
@@ -261,9 +263,12 @@ static void Menu_prepareRun(KeyEvent_t ev){
     OLED_BufRestore();
     // 结束倒计时后立刻更新一次物理屏幕
     OLED_Update();
-    oled_update_blocked = pdFALSE;
+
+    curState.mode = Run;        //切换到运行模式
+
     // 通知显示任务在恢复后做一次同步刷新（如果需要）
     if (xMenuShowHandle != NULL) {
         xTaskNotifyGive(xMenuShowHandle);
     }
+    oled_update_blocked = pdFALSE;
 }

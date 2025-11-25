@@ -96,18 +96,9 @@ void PWM_Init(void)
     GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_IS);
 
-    STBY_cmd(ENABLE);
+    STBY_cmd(DISABLE);
 
 
-}
-
-void STBY_cmd(FunctionalState state)
-{
-    if(state == ENABLE){
-        GPIO_SetBits(GPIOB, GPIO_Pin_0);
-    }else if(state == DISABLE){
-        GPIO_ResetBits(GPIOB, GPIO_Pin_0);
-    }
 }
 
 void TIM1_Init(void)                //定时中断 10ms
