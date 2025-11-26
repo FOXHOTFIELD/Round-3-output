@@ -10,6 +10,8 @@
 #define KEY_SURE (GPIO_Pin_14)     //PB14
 #define KEY_BACK (GPIO_Pin_13)     //PB13
 
+#define Menu_thrd_correct_port (GPIO_Pin_12) //PB12用于启动input的thrd_correct
+
 // 按键事件枚举：按下时会把对应事件放入队列
 typedef enum {
 	KEY_EVENT_NONE = 0,
@@ -48,6 +50,7 @@ KeyEvent_t Menu_GetKeyEvent(TickType_t xTicksToWait);
 static void Menu_turnEdit(void);
 static void Menu_changeSpeed(KeyEvent_t ev);
 static void Menu_prepareRun(KeyEvent_t ev);
+static void Menu_thrd_correct(void);
 void vSerial_rxTask(void *pvParameters);
 
 

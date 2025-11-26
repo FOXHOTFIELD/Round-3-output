@@ -105,6 +105,8 @@ static void Menu_KeyTask(void *pvParameters)
         OLED_Update();
     }
  }
+
+
 // 初始化菜单显示并创建按键队列与任务
 void Menu_Init(void)
 {
@@ -145,6 +147,16 @@ void Menu_Init(void)
     if (xMenuShowHandle != NULL) {
         xTaskNotifyGive(xMenuShowHandle);
     }
+
+    /*初始化thrd_correct控制口*/
+    GPIO_IS.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_IS.GPIO_Pin = Menu_thrd_correct_port;
+    GPIO_IS.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOB, &GPIO_IS);
+    
+    GPIO_ResetBits(GPIOB, Menu_thrd_correct_port);
+
+
 }
 
 // 从按键队列取一条事件，超时返回 KEY_EVENT_NONE
@@ -157,6 +169,7 @@ KeyEvent_t Menu_GetKeyEvent(TickType_t xTicksToWait)
     }
     return KEY_EVENT_NONE;
 }
+
 
 /*
  *在Menu_KeyTask内部直接接受ev
@@ -174,6 +187,7 @@ void Menu_CMDProcess(KeyEvent_t ev)
         {
             if(curState.psost == speed) Menu_turnEdit();
             else if(curState.psost == start) Menu_prepareRun(ev);
+            else if(curState.psost == correct) Menu_thrd_correct();
         }else if (ev == KEY_EVENT_BACK)
         {
             /* code */
@@ -245,6 +259,14 @@ static void Menu_changeSpeed(KeyEvent_t ev)
         //if (BaseSpeed < 0)  BaseSpeed = 0;
     }
     OLED_ShowSignedNum(100, 17, BaseSpeed, 2, OLED_8X16);
+}
+
+static void Menu_thrd_correct(void)
+{
+    // 输出一个 10ms 脉冲，触发 thrd_correct 逻辑
+    GPIO_SetBits(GPIOB, Menu_thrd_correct_port);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    GPIO_ResetBits(GPIOB, Menu_thrd_correct_port);
 }
 
 static void Menu_prepareRun(KeyEvent_t ev){

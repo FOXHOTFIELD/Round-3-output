@@ -89,6 +89,7 @@ void Serial_Init(void)
     //OLED_ShowString(56, 1, "SerialOK", OLED_6X8);
 }
 
+
 /*处理Serial*/
 void vSerial_rxTask(void *pvParameters)
 {
@@ -125,6 +126,20 @@ void vSerial_rxTask(void *pvParameters)
 		}
     }
 }
+
+/**/
+void Serial_mySendString(char *cmd)
+{
+	Serial_SendByte('@');
+
+    Serial_SendString(cmd);
+
+    Serial_SendString("\r\n");
+
+    //OLED_ShowString(1, 1, cmd, OLED_6X8);
+    //OLED_Update();
+}
+
 
 /**
   * 函    数：串口发送一个字节
