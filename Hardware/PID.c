@@ -57,10 +57,13 @@ static void PIDControl(uint8_t index, struct MOTOR *motor)
     
     if(status != 1 && status != 5) {
         motor->Target = (float)BaseSpeed + (index == 1 ? (+offset) : (-offset));
-    } else if(status == 1 || status == 5) {
+    } else if(status == 1) {
         // 保持上一次输出状态，不更新Target和Out
         // 直接返回，不做后续PID计算和PWM输出
-        //return;
+        motor->Target = (index == 2 ? BaseSpeed+10  : 15);
+    }else if(status == 5){
+        motor->Target = (index == 1 ? BaseSpeed+10 : 15);
+
     }
     //motor->Target = (float)BaseSpeed;
     OLED_ShowSignedNum(90, 56, motor->Target, 3, OLED_6X8);
