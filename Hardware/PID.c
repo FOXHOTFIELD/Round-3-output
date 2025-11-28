@@ -9,6 +9,7 @@
 static void vPIDTask(void *pvParameters);
 static void PIDControl(uint8_t index, struct MOTOR *motor);
 
+volatile float offset = 0;
 
 /*
  * 初始化vPIDTask的Freertos控制
@@ -47,10 +48,21 @@ void Motor_DateClear(void)
 /*具体的PID控制操作*/
 static void PIDControl(uint8_t index, struct MOTOR *motor)
 {
-    ////////////////////////////////////////////////////////*获取实际速度值*/
-    ///////////////////////////////////////////////////////Actual = Motor1_Speed;
-    /* 将菜单设定的 BaseSpeed 作为目标速度（setpoint） */
-    motor->Target = (float)BaseSpeed;
+    /*
+     *   if offset > 0, turn right
+     *   motor2 in right 
+     *   motor2.speed - offset (sub)
+     *   motor1.speed + offset (add)
+     ????*/
+    
+    if(status != 1 && status != 5) {
+        motor->Target = (float)BaseSpeed + (index == 1 ? (+offset) : (-offset));
+    } else if(status == 1 || status == 5) {
+        // 保持上一次输出状态，不更新Target和Out
+        // 直接返回，不做后续PID计算和PWM输出
+        //return;
+    }
+    //motor->Target = (float)BaseSpeed;
     OLED_ShowSignedNum(90, 56, motor->Target, 3, OLED_6X8);
         
     /*获取本次误差、上次误差和上上次误差*/
@@ -76,21 +88,16 @@ static void PIDControl(uint8_t index, struct MOTOR *motor)
         //计算总输出增量
         (motor ->Out) += deltaP + deltaI + deltaD;
             
-        //motor -> Out = 0;
         /*输出限幅*/
-        //if (motor ->Out > 100) {motor ->Out = 100;}     //限制输出值最大为100
         if (motor ->Out > 100) {motor ->Out = 100;}     //限制输出值最大为100
         if (motor ->Out < -100) {motor ->Out = -100;}   //限制输出值最小为-100
-        //if (motor ->Out < -10) {motor ->Out = -10;}   //限制输出值最小为-100
-        if(motor ->Target == 0 && motor ->Actual == 0) motor ->Out = 0;
-
-        //if(Out == 0) Motor_SetMode(1, Motor_Mode_break);
-        //else if(Out > 0) Motor_SetMode(1, Motor_Mode_frd_rotation);
-        //else if (Out < 0) Motor_SetMode(1, Motor_Mode_rvs_rotation)
+        
+        /*目标和实际速度都为0时，停止输出*/
+        if(fabs(motor ->Target) < 0.1f && motor ->Actual == 0) motor ->Out = 0;
     } 
 
-	/*执行控制*/
-    Motor_SetPWM(index, (motor ->Out));
+	/*执行控制 - 类型转换为int8_t*/
+    Motor_SetPWM(index, (int8_t)(motor ->Out));
 
     OLED_ShowSignedNum(56, 56, Motor1_Data.Out, 3, OLED_6X8);
     OLED_UpdateArea(1, 56, 24, 8);

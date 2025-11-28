@@ -19,6 +19,8 @@ extern enum Motor_Mode Motor2_Mode;
 extern volatile int16_t Motor1_Speed;
 extern volatile int16_t Motor2_Speed;
 
+extern volatile float offset;
+extern uint8_t status;
 
 
 extern enum MENU_STATE menu_state;

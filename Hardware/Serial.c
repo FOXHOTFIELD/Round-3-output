@@ -8,7 +8,7 @@ char Serial_RxPacket[SIZE_OF_RXPACKET];				//定义接收数据包数组，数�
 uint8_t Serial_RxData;		//(uint8_t)定义串口接收的数据变量
 uint8_t Serial_RxFlag;		//(uint8_t)定义串口接收的标志位变量			//定义接收数据包标志位
 #define JUSTFLOAT_TAIL   {0x00, 0x00, 0x80, 0x7f} // 帧尾[1]
-
+uint8_t status;
 /*Freertos*/
 QueueHandle_t xRxQueue = NULL;          //(QueueHandle_t)Freertos下队列 传输input数据
 SemaphoreHandle_t xSerialSemphr = NULL; //(SemaphoreHandle_t)Freertos下的信号量 标记来自input数据收到
@@ -98,29 +98,36 @@ void vSerial_rxTask(void *pvParameters)
 	for(;;){
 		if (xQueueReceive(xRxQueue, Rx_buf, portMAX_DELAY) == pdPASS)		//如果接收到数据包
 		{
-            //sscanf(Rx_buf, "%4d%4d", &(Motor1_Data.Actual), &(Motor2_Data.Actual));
-            //OLED_ShowSignedNum(1, 56, Motor1_Data.Actual, 4, OLED_6X8);
-            //OLED_UpdateArea(1, 47, );
-			/* 解析通过 Serial_mySend 发送的小端 int16_t 数据：s1L,s1H,s2L,s2H */
-			int16_t s1 = (int16_t)(
+			/* 解析小端格式的 int16_t 数据：speed1 (字节0-1) */
+			int16_t speed1 = (int16_t)(
 				((uint16_t)(uint8_t)Rx_buf[0]) |
 				((uint16_t)(uint8_t)Rx_buf[1] << 8)
 			);
-			int16_t s2 = (int16_t)(
+			
+			/* 解析小端格式的 int16_t 数据：speed2 (字节2-3) */
+			int16_t speed2 = (int16_t)(
 				((uint16_t)(uint8_t)Rx_buf[2]) |
 				((uint16_t)(uint8_t)Rx_buf[3] << 8)
 			);
 
-			/* 直接赋值 int16 到 Actual */
-			Motor1_Data.Actual = s1;
-			Motor2_Data.Actual = s2;
+		/* 从第4个字节开始，解析小端格式的 float (IEEE754) */
+            float temp_offset;
+            memcpy(&temp_offset, &Rx_buf[4], sizeof(float));
+            offset = temp_offset; // 将完整的值赋给 volatile 变量
+
+		/* 解析 status 字段 (字节8) */
+		status = (uint8_t)Rx_buf[8];
+
+		/* 赋值到电机实际速度 */
+		Motor1_Data.Actual = speed1;
+		Motor2_Data.Actual = speed2;
 
             OLED_ShowSignedNum(1, 56, Motor1_Data.Actual, 4, OLED_6X8);
             OLED_ShowSignedNum(31, 56, Motor2_Data.Actual, 4, OLED_6X8);
+		OLED_ShowFloatNum(61, 56, offset, 2, 2, OLED_6X8);
+		OLED_ShowNum(91, 1, status, 1, OLED_6X8);
             
-            if(oled_update_blocked != pdTRUE) OLED_Update();
-
-            xSemaphoreGive(xSerialSemphr);
+            if(oled_update_blocked != pdTRUE) OLED_Update();            xSemaphoreGive(xSerialSemphr);
 
 			Serial_RxFlag = 0;			//处理完成后，需要将接收数据包标志位清零，否则将无法接收后续数据包
 		}
