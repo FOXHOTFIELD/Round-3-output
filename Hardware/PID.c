@@ -51,7 +51,7 @@ void Motor_DateClear(void)
 static void PIDControl(uint8_t index, struct MOTOR *motor)
 {
     /* 速度插值: 使用指数平滑在大小速度之间平滑过渡，避免切换突变 */
-    #define SPEED_ALPHA 0.20f  /* 平滑因子 (0..1)，越大过渡越快 */
+    #define SPEED_ALPHA 0.50f  /* 平滑因子 (0..1)，越大过渡越快；已加速至 0.5 */
     static float currentTarget[2] = {0.0f, 0.0f};
     static uint8_t interp_inited = 0;
 
