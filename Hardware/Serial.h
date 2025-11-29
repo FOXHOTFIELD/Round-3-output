@@ -38,7 +38,7 @@ void Serial_SendString(char *String);
 void Serial_SendNumber(uint32_t Number, uint8_t Length);
 void Serial_Printf(char *format, ...);
 void Serial_SendJustFloat(float *data, uint16_t num);
-void processCmd(void);
+void Serial_mySendString(char *cmd);
 
 /* 以下两个接口用于获取接收标志与接收数据 */
 uint8_t Serial_GetRxFlag(void);

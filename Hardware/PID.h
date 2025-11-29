@@ -23,4 +23,5 @@ extern struct MOTOR Motor1_Data, Motor2_Data;
 
 extern int flag;
 extern volatile int BaseSpeed;
+extern volatile int CurveSpeed;
 #endif
