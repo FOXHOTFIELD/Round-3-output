@@ -48,23 +48,29 @@ void Motor_DateClear(void)
 /*具体的PID控制操作*/
 static void PIDControl(uint8_t index, struct MOTOR *motor)
 {
+    int16_t thisSpeed;
+    if(status == 3 || status == 4 || status == 5) thisSpeed = BaseSpeed;
+    else thisSpeed = CurveSpeed;
     /*
      *   if offset > 0, turn right
      *   motor2 in right 
      *   motor2.speed - offset (sub)
+     * float thisSpeed = 
      *   motor1.speed + offset (add)
      ????*/
     
-    if(status != 1 && status != 7) {
-        motor->Target = (float)BaseSpeed + (index == 1 ? (+offset) : (-offset));
-    } else if(status == 1) {
-        // 保持上一次输出状态，不更新Target和Out
-        // 直接返回，不做后续PID计算和PWM输出
-        motor->Target = (index == 2 ? BaseSpeed+10  : 15);
-    }else if(status == 7){
-        motor->Target = (index == 1 ? BaseSpeed+10 : 15);
+    //if(status != 1 && status != 7) {
+        //motor->Target = (float)thisSpeed + (index == 1 ? (+offset) : (-offset));
+    //} else if(status == 1) {
+        //// 保持上一次输出状态，不更新Target和Out
+        //// 直接返回，不做后续PID计算和PWM输出
+        //motor->Target = (index == 2 ? thisSpeed  : -25);
+    //}else if(status == 7){
+        //motor->Target = (index == 1 ? thisSpeed : -25);
 
-    }
+    //}
+    motor->Target = (float)thisSpeed + (index == 1 ? (+offset) : (-offset));
+
     //motor->Target = (float)BaseSpeed;
     OLED_ShowSignedNum(90, 56, motor->Target, 3, OLED_6X8);
         

@@ -5,8 +5,8 @@ MenuState curState = {
     .mode = Wait,
     .psost = start
 };
-volatile int BaseSpeed = 70;
-volatile int CuSpeed = 70;
+volatile int BaseSpeed = 75;
+volatile int CurveSpeed = 60;
 int flag = 0;
 
 struct MOTOR Motor1_Data = {
